@@ -242,7 +242,8 @@ if (isTopWindow) {
 		// Create the iframe
 		zoteroFrame = new Zotero.Frame({
 			id: frameID,
-			src: frameSrc,
+			// The popup picks its palette from the page it sits on (see theme.js)
+			src: Zotero.Utilities.Connector.themedFrameURL(frameSrc, document),
 			title: Zotero.getString('general_saveTo', ZOTERO_CONFIG.CLIENT_NAME),
 			'data-single-file-hidden-frame': ''
 		}, {

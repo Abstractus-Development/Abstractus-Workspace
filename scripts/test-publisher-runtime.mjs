@@ -63,6 +63,11 @@ try {
   const promptDeadline=Date.now()+10000;let frame;
   while(Date.now()<promptDeadline){frame=page.frames().find(f=>f.url().includes('modalPrompt/modalPrompt.html'));if(frame)break;await new Promise(r=>setTimeout(r,100));}
   assert(frame,'Connection prompt must be shown on the publisher page');
+  // Contrast mode: the content script measured the (light) publisher page, so the prompt paints dark
+  const frameQuery=new URL(frame.url()).searchParams;
+  assert.equal(frameQuery.get('mode'),'contrast');assert.equal(frameQuery.get('host'),'light');
+  assert.equal(await frame.evaluate(()=>document.documentElement.dataset.theme),'dark');
+  console.log('PASS prompt over a light publisher page is dark (contrast), page scheme measured by the content script.');
   await frame.waitForFunction(()=>document.body.textContent.includes('Update Abstractus Desktop'),{timeout:10000});
   assert((await frame.evaluate(()=>document.body.textContent)).includes('Reloading the extension alone will not fix this'));
   await page.screenshot({path:path.join(root,'.test-results/publisher-update-required.png')});

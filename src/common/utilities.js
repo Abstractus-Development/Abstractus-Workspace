@@ -31,6 +31,68 @@
 Zotero.Utilities = Zotero.Utilities || {};
 
 Zotero.Utilities.Connector = {
+	/**
+	 * Whether a page reads as dark or light: the first opaque background behind its content,
+	 * else its declared color-scheme, else light (the default canvas is white).
+	 * @param {Document} doc
+	 * @return {'dark'|'light'}
+	 */
+	pageColorScheme: function(doc) {
+		try {
+			let win = doc.defaultView;
+			for (let el of [doc.body, doc.documentElement]) {
+				if (!el) continue;
+				let m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?/.exec(win.getComputedStyle(el).backgroundColor);
+				if (!m || (m[4] !== undefined && parseFloat(m[4]) < 0.5)) continue;
+				let luminance = (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255;
+				return luminance < 0.5 ? 'dark' : 'light';
+			}
+			let scheme = win.getComputedStyle(doc.documentElement).colorScheme || '';
+			return /\bdark\b/.test(scheme) && !/\blight\b/.test(scheme) ? 'dark' : 'light';
+		}
+		catch (e) {
+			return 'light';
+		}
+	},
+
+	/**
+	 * The used CSS color-scheme of the element our frames are inserted into (the body, else
+	 * the root): "dark" only when the page declares dark, or declares both and the browser
+	 * prefers dark. "normal" and "light" are light. An embedded frame whose root uses a
+	 * different scheme is painted with an opaque canvas, so the frame must match this exactly.
+	 * @return {'dark'|'light'}
+	 */
+	embedderColorScheme: function(doc) {
+		try {
+			let win = doc.defaultView;
+			let el = doc.body || doc.documentElement;
+			let declared = (win.getComputedStyle(el).colorScheme || 'normal').split(/\s+/);
+			let dark = declared.includes('dark'), light = declared.includes('light');
+			if (dark && !light) return 'dark';
+			if (dark && light) return win.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+			return 'light';
+		}
+		catch (e) {
+			return 'light';
+		}
+	},
+
+	/**
+	 * Extension frame URL carrying the appearance pref, how the page looks (for the contrast
+	 * palette) and the page's used color-scheme (so the frame stays transparent), which
+	 * theme.js inside the frame applies before first paint.
+	 */
+	themedFrameURL: function(url, doc) {
+		let mode = 'contrast';
+		try { mode = Zotero.Prefs.get('appearance') || 'contrast'; } catch (e) {}
+		let params = new URLSearchParams({
+			mode,
+			host: Zotero.Utilities.Connector.pageColorScheme(doc),
+			scheme: Zotero.Utilities.Connector.embedderColorScheme(doc)
+		});
+		return url + (url.includes('?') ? '&' : '?') + params.toString();
+	},
+
 	throttleAsync: function(func, wait) {
 		var previous = 0;
 		return function() {

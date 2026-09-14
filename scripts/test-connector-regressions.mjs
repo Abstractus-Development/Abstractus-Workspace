@@ -105,7 +105,9 @@ await test('Valid PDF and script-blocking CSP documents still offer background c
 await test('Native connection stays restricted to own setup pages and never returns the key to them',async()=>{
   let calls=0;
   context.browser.permissions={contains:async()=>true};
-  context.browser.runtime.sendNativeMessage=async(host,message)=>{calls++;assert.equal(host,'ai.abstractus.desktop');assert.equal(JSON.stringify(message),JSON.stringify({action:'connect'}));return {code:id+':'+key};};
+  // Chrome lists a garbled placeholder brand first; the real brand must be the one reported
+  context.navigator={userAgentData:{brands:[{brand:'Not;A=Brand',version:'99'},{brand:'Chromium',version:'131'},{brand:'Google Chrome',version:'131'}]},userAgent:'Mozilla/5.0 Chrome/131'};
+  context.browser.runtime.sendNativeMessage=async(host,message)=>{calls++;assert.equal(host,'ai.abstractus.desktop');assert.deepEqual(Object.keys(message).sort(),['action','browser']);assert.equal(message.action,'connect');assert.equal(message.browser,'Google Chrome');return {code:id+':'+key};};
   for(const foreign of [{id:'test-extension',url:'https://publisher.org/'},{id:'foreign',url:sender.url}])await assert.rejects(()=>listener({type:'abstractus-pair',action:'native'},foreign));
   assert.equal(calls,0);
   reply='signed';
@@ -132,6 +134,37 @@ await test('Native approval is single-flight and requires the optional browser p
   reply='signed';release({code:id+':'+key});assert.equal((await pending).connected,true);
   await action('disconnect');
 });
+await test('One connection per browser: reconnecting requires a disconnect, which also unpairs on the desktop',async()=>{
+  reply='signed';assert.equal((await action('connect',id+':'+key)).connected,true);
+  context.browser.runtime.sendNativeMessage=async()=>{throw new Error('must not be called while connected');};
+  await assert.rejects(()=>action('native'),/already connected/);
+  await assert.rejects(()=>action('connect',id+':'+key),/already connected/);
+  const before=requests.length;
+  const result=await action('disconnect');
+  assert.equal(result.connected,false);assert.match(result.message,/^Browser disconnected\. No papers/);
+  const unpair=requests.slice(before).find(r=>r.url.endsWith('/connector/unpair'));
+  assert(unpair,'disconnect must tell the desktop');assert.equal(unpair.options.method,'POST');
+  assert.equal(new Headers(unpair.options.headers).get('X-Abstractus-Client'),id);
+  reply='unpaired';assert.equal((await action('status')).state,'pairing_required');
+  // A stored pairing the desktop no longer recognises must not trap the user: Connect replaces it
+  reply='signed';await action('connect',id+':'+key);
+  reply='unpaired';assert.equal((await action('status')).state,'unverified');
+  let nativeCalls=0;context.browser.runtime.sendNativeMessage=async()=>{nativeCalls++;reply='signed';return {code:id+':'+key};};
+  const replaced=await action('native');
+  assert.equal(replaced.connected,true);assert.equal(nativeCalls,1);
+  assert.equal((await action('status')).state,'connected');
+  await action('disconnect');
+  // Desktop unreachable: the browser still forgets its key, and says the desktop list needs tidying
+  reply='signed';await action('connect',id+':'+key);reply='offline';
+  assert.match((await action('disconnect')).message,/not reachable/);
+  assert.equal((await action('status')).state,'offline');
+  for(const brands of [[{brand:'Not/A)Brand'},{brand:'Chromium'},{brand:'Microsoft Edge'}],[{brand:'Not_A Brand'},{brand:'Chromium'},{brand:'Brave'}],[{brand:'Chromium'},{brand:'Not:A-Brand'}]]){
+    context.navigator={userAgentData:{brands},userAgent:'Mozilla/5.0 Chrome/131 Safari/537'};
+    let sent;context.browser.runtime.sendNativeMessage=async(h,m)=>{sent=m.browser;return {error:'Connection cancelled.'};};
+    await assert.rejects(()=>action('native'),/cancelled/);
+    assert.equal(sent,brands.length===3?brands[2].brand:'Google Chrome');
+  }
+});
 await test('Maintained proxy engine still rewrites publisher URLs without the Zotero desktop',async()=>{
   const proxyContext=vm.createContext({URL,console,Date,Set,Map,Zotero:{debug:()=>{},Utilities:{quotemeta:s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}}});
   vm.runInContext(await read('src/common/proxy.js'),proxyContext);
@@ -146,4 +179,69 @@ const result={passed,syntheticOnly:true,nativeTested:false,at:new Date().toISOSt
 await fs.mkdir(path.join(root,'.test-results'),{recursive:true});
 await fs.writeFile(path.join(root,'.test-results/connector-regressions.json'),JSON.stringify(result,null,2)+'\n');
 
+await test('Concurrent offscreen startup creates one document and never rejects',async()=>{
+  // Worker start: Connector_Browser.init() and content scripts in open tabs all need the
+  // offscreen page at once; Chrome allows exactly one createDocument() to succeed.
+  let created=0;const clients=[];
+  const offscreen=vm.createContext({setTimeout,clearTimeout,setInterval:()=>0,console,OFFSCREEN_BACKGROUND_OVERRIDES:{},
+    Zotero:{debug:()=>{},logError:e=>{throw e;},Promise:{defer(){let resolve,reject;const promise=new Promise((res,rej)=>{resolve=res;reject=rej;});return {promise,resolve,reject};}},
+      MessagingGeneric:class{constructor(o){this.o=o;}reinit(o){this.o=o;}addMessageListener(name,fn){if(name==='offscreen-sandbox-initialized')fn();}async sendMessage(){return 'sent';}}},
+    browser:{tabs:{onRemoved:{addListener(){}}},offscreen:{
+      hasDocument:async()=>created>0,
+      createDocument:async()=>{created++;if(created>1)throw new Error('Only a single offscreen document may be created.');await new Promise(r=>setTimeout(r,20));clients.push({url:'chrome-extension://test-extension/offscreen/offscreen.html',postMessage(){}});}}},
+    self:{clients:{matchAll:async()=>clients.slice()}}});
+  vm.runInContext(await read('src/browserExt/background/offscreenManager.js'),offscreen);
+  const manager=offscreen.Zotero.OffscreenManager;
+  const port={postMessage(){},onmessage:null};
+  const arrivals=[manager.init(),manager.init(),manager.sendMessage('Translate.new',[]),manager.addMessageListener('x',()=>{})];
+  await new Promise(r=>setTimeout(r,40));
+  offscreen.self.onmessage({data:'offscreen-port',ports:[port]});
+  const results=await Promise.all(arrivals);
+  assert.equal(created,1);assert.equal(results[2],'sent');
+  // Losing the race outright (document created by someone else between check and call) is not an error either
+  clients.length=0;created=0;
+  offscreen.browser.offscreen.hasDocument=async()=>false;
+  offscreen.browser.offscreen.createDocument=async()=>{throw new Error('Only a single offscreen document may be created.');};
+  const late=manager.init();
+  await new Promise(r=>setTimeout(r,10));
+  offscreen.self.onmessage({data:'offscreen-port',ports:[port]});
+  await late;
+  // A real failure still surfaces
+  offscreen.browser.offscreen.createDocument=async()=>{throw new Error('Offscreen API unavailable');};
+  await assert.rejects(()=>manager.init(),/unavailable/);
+});
+await test('Appearance resolves contrast, fixed and system modes and page schemes are measured',async()=>{
+  const attrs={};const dom=vm.createContext({location:{search:'?host=dark&mode=contrast'},localStorage:{getItem:()=>null,setItem(){}},
+    window:null,document:{documentElement:{setAttribute:(k,v)=>{attrs[k]=v;},getAttribute:k=>attrs[k]}}});
+  dom.window=dom;dom.matchMedia=()=>({matches:false,addEventListener(){}});dom.addEventListener=()=>{};dom.URLSearchParams=URLSearchParams;
+  vm.runInContext(await read('src/common/theme.js'),dom);
+  const t=dom.AbstractusTheme;
+  assert.equal(attrs['data-theme'],'light'); // contrast over a dark page
+  assert.equal(t.resolve('contrast','light',false),'dark');assert.equal(t.resolve('contrast',null,true),'light');assert.equal(t.resolve('contrast',null,false),'dark');
+  assert.equal(t.resolve('dark','light',false),'dark');assert.equal(t.resolve('light','dark',true),'light');
+  assert.equal(t.resolve('system',null,true),'dark');assert.equal(t.resolve('system','dark',false),'light');
+  assert.throws(()=>t.set('neon'));
+  const util=vm.createContext({Zotero:{Prefs:{get:()=>'contrast'}},URLSearchParams});
+  vm.runInContext(await read('src/common/utilities.js'),util);
+  const scheme=util.Zotero.Utilities.Connector.pageColorScheme, doc=(bodyBg,htmlBg,colorScheme='normal')=>({body:{bg:bodyBg},documentElement:{bg:htmlBg},defaultView:{getComputedStyle:el=>({backgroundColor:el.bg,colorScheme})}});
+  assert.equal(scheme(doc('rgb(255, 255, 255)','rgba(0, 0, 0, 0)')),'light');
+  assert.equal(scheme(doc('rgb(18, 18, 18)','rgb(255, 255, 255)')),'dark');
+  assert.equal(scheme(doc('rgba(0, 0, 0, 0)','rgb(24, 32, 48)')),'dark');
+  assert.equal(scheme(doc('rgba(0, 0, 0, 0.2)','rgba(0, 0, 0, 0)','dark')),'dark');
+  assert.equal(scheme(doc('rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)','light dark')),'light');
+  assert.equal(scheme(doc('rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)')),'light');
+  assert.equal(scheme({}),'light');
+  // The frame must adopt the embedder's used scheme exactly (an opaque canvas otherwise)
+  const embed=util.Zotero.Utilities.Connector.embedderColorScheme, page=(colorScheme,prefersDark=false)=>({body:{},documentElement:{},defaultView:{getComputedStyle:()=>({colorScheme}),matchMedia:()=>({matches:prefersDark})}});
+  assert.equal(embed(page('normal')),'light');assert.equal(embed(page('light')),'light');assert.equal(embed(page('dark')),'dark');
+  assert.equal(embed(page('light dark',true)),'dark');assert.equal(embed(page('light dark',false)),'light');assert.equal(embed(page('only light')),'light');assert.equal(embed({}),'light');
+  assert.equal(util.Zotero.Utilities.Connector.themedFrameURL('chrome-extension://x/p.html',doc('rgb(0, 0, 0)','rgb(0, 0, 0)','dark')),'chrome-extension://x/p.html?mode=contrast&host=dark&scheme=dark');
+});
+await test('Translator repository requests identify as the tracked Zotero Connector release, not the product version',async()=>{
+  const config=vm.createContext({});vm.runInContext(await read('src/common/zotero_config.js')+';globalThis.CONFIG=ZOTERO_CONFIG;',config);
+  assert.match(config.CONFIG.REPOSITORY_CLIENT_VERSION,/^5\.\d+\.\d+$/);
+  const repo=await read('src/common/repo.js');
+  assert.equal((repo.match(/version=\$?\{?ZOTERO_CONFIG\.REPOSITORY_CLIENT_VERSION|"metadata\?version=" \+ ZOTERO_CONFIG\.REPOSITORY_CLIENT_VERSION/g)||[]).length,2);
+  assert(!/version=\$\{Zotero\.version\}|version=" \+ Zotero\.version/.test(repo),'repo.js must not send the product version');
+});
 console.log(`${passed} connector regressions passed. No native process or user library used.`);

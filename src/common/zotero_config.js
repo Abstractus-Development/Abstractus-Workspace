@@ -32,6 +32,10 @@ const ZOTERO_CONFIG = {
 	// Site translators (the page parsers) are still fetched from and kept up to date by the Zotero
 	// translator repository. Abstractus Desktop does not serve translators, so always use the repo.
 	REPOSITORY_URL: 'https://repo.zotero.org/repo/',
+	// The repository only serves translators to Zotero Connector versions it knows (anything else
+	// gets a 403), so requests to it identify as the upstream connector release this fork tracks,
+	// not as the Abstractus product version. Update it when syncing a newer upstream release.
+	REPOSITORY_CLIENT_VERSION: '5.0.202',
 	REPOSITORY_CHECK_INTERVAL: 86400, // 24 hours
 	REPOSITORY_RETRY_INTERVAL: 3600, // 1 hour
 	REPOSITORY_CHANNEL: 'trunk',

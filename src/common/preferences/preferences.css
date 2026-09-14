@@ -32,10 +32,11 @@
 	--radius-sm: 8px;
 	--shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px -16px rgba(15, 32, 115, 0.25);
 	--focus: 0 0 0 3px rgba(63, 92, 226, 0.35);
+	color-scheme: light;
+}
 
-	color-scheme: dark;
-
-	/* Always-dark palette (Abstractus pages do not follow the OS theme) */
+/* Dark palette: applied by theme.js as data-theme="dark" (see theme.js for the modes) */
+:root[data-theme="dark"] {
 	--primary: var(--brand-4);
 	--primary-hover: #7a8ff0;
 	--primary-soft: rgba(95, 120, 232, 0.16);
@@ -56,7 +57,6 @@
 
 	--shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.6);
 	--focus: 0 0 0 3px rgba(95, 120, 232, 0.45);
-
 	color-scheme: dark;
 }
 
@@ -546,7 +546,9 @@ label > input[type=text] {
 .connect-primary { padding: 11px 18px; font-weight: 650; }
 .connect-actions[data-state="connected"] #abstractus-pair-native,
 .connect-actions[data-state="connected"] .connection-backup { display: none; }
-.connect-actions:not([data-state="connected"]) #abstractus-pair-disconnect { display: none; }
+/* Disconnect is offered whenever a pairing is stored: connected, or stored but no longer
+   verifiable ("Reconnect needed"), so there is always a way out */
+.connect-actions:not([data-state="connected"]):not([data-state="unverified"]) #abstractus-pair-disconnect { display: none; }
 .connection-backup { margin: 14px 0 0; }
 summary { cursor: pointer; padding: 8px 0; font-weight: 600; color: var(--muted); }
 .connection-backup input { width: 100%; box-sizing: border-box; margin: 8px 0; }

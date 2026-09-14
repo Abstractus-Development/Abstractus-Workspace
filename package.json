@@ -1,6 +1,6 @@
 {
   "name": "abstractus-connector",
-  "version": "5.0.202",
+  "version": "1.0.0",
   "private": true,
   "description": "Browser connector for Abstractus Desktop, based on the Zotero Connector",
   "license": "AGPL-3.0-or-later",
@@ -38,6 +38,7 @@
     "build": "node scripts/build.mjs",
     "build:debug": "node scripts/build.mjs -d",
     "package": "node scripts/build.mjs --zip",
+    "release": "node scripts/release.mjs",
     "watch": "gulp watch",
     "test": "mocha",
     "update-single-file": "scripts/update-single-file",

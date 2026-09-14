@@ -116,19 +116,56 @@
       return signed(pair,method,uri,options);
     }
   };
+  // Human-readable browser brand for the desktop's connection list ("Google Chrome",
+  // "Microsoft Edge", "Brave", "Firefox"). Never the full user agent.
+  function browserBrand() {
+    if(typeof navigator==='undefined')return 'Browser';
+    // userAgentData lists the real brand next to "Chromium" and a deliberately garbled
+    // "Not;A=Brand"-style entry; take a known brand first, then anything that is neither.
+    const brands=(navigator.userAgentData?.brands||[]).map(b=>String(b.brand||''));
+    const known=brands.find(b=>/^(Google Chrome|Microsoft Edge|Brave|Opera|Vivaldi|Arc|Samsung Internet)$/i.test(b));
+    let brand=known||brands.find(b=>!/chromium/i.test(b) && !/not.*brand/i.test(b))||'';
+    if(!brand){const ua=navigator.userAgent||'';brand=/Firefox\//.test(ua)?'Firefox':/Edg\//.test(ua)?'Microsoft Edge':/OPR\//.test(ua)?'Opera':/Chrome\//.test(ua)?'Google Chrome':/Safari\//.test(ua)?'Safari':'Browser';}
+    return brand.replace(/[^A-Za-z0-9 .()-]/g,'').trim().slice(0,32)||'Browser';
+  }
+  // Disconnect on the desktop too, so the pairing does not linger in its list. Best effort:
+  // an unreachable desktop still lets the browser forget its key.
+  async function unpair(pair) {
+    try { await signed(pair,'POST','http://127.0.0.1:23130/connector/unpair',{headers:{'Content-Type':'application/json'},body:'{}'}); return true; }
+    catch { return false; }
+  }
   let nativePending=false;
   browser.runtime.onMessage.addListener((request,sender)=>{
     if(request?.type!=='abstractus-pair')return;
     if(sender.id!==browser.runtime.id || !['preferences/preferences.html','preferences/connect.html'].some(path=>sender.url?.split(/[?#]/)[0]===browser.runtime.getURL(path)))return Promise.reject(new Error('Only Connector Settings can change browser pairing'));
     return (async()=>{
-      if(request.action==='disconnect'){await store(undefined,true);return {connected:false, state:'pairing_required', message:'Browser disconnected. No papers can be saved until you reconnect.'};}
+      if(request.action==='disconnect'){
+        const pair=await store();
+        const desktopUpdated=pair?await unpair(pair):true;
+        await store(undefined,true);
+        return {connected:false, state:'pairing_required', message:desktopUpdated
+          ?'Browser disconnected. No papers can be saved until you reconnect.'
+          :'Browser disconnected. Abstractus Desktop was not reachable, so remove this browser in Library → Browser connections as well.'};
+      }
+      // One connection per browser: while the stored pairing still verifies, reconnecting means
+      // disconnecting first (which also removes it on the desktop). A stored pairing the desktop
+      // no longer recognises (removed there, or the desktop was reset) is dead weight: replace it.
+      if(request.action==='native' || request.action==='connect'){
+        const existing=await store();
+        if(existing){
+          let verified=false;
+          try { await handshake(existing); verified=true; } catch {}
+          if(verified)throw new Error('This browser is already connected. Disconnect it first to connect again.');
+          await unpair(existing); await store(undefined,true);
+        }
+      }
       if(request.action==='native'){
         if(nativePending)throw new Error('A connection approval is already open. Check Abstractus Desktop.');
         nativePending=true;
         try {
           if(!await browser.permissions.contains({permissions:['nativeMessaging']}))throw new Error('Allow the browser connection permission, or use a code.');
           let reply;
-          try {reply=await browser.runtime.sendNativeMessage('ai.abstractus.desktop',{action:'connect'});}
+          try {reply=await browser.runtime.sendNativeMessage('ai.abstractus.desktop',{action:'connect',browser:browserBrand()});}
           catch(e) {
             // Surface Chrome's own reason (host not found / forbidden / exited) so setup problems are diagnosable
             const reason=String(e?.message||e||'').replace(/\s+/g,' ').slice(0,200);

@@ -20,6 +20,7 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="../theme.js"></script>
 		<link rel="stylesheet" type="text/css" media="screen" href="preferences.css" />
 		<title data-l10n-id="preferences_title" data-l10n-client-name>Abstractus Connector Preferences</title>
 	</head>
@@ -67,6 +68,18 @@
 								<input id="abstractus-pair-code" type="password" autocomplete="off" spellcheck="false"/>
 								<div class="actions"><button id="abstractus-pair-connect" class="button">Connect with code</button></div>
 							</details>
+						</div>
+					</div>
+					<div class="card">
+						<div class="card-title">Appearance</div>
+						<div class="card-body">
+							<label for="appearance-select">Save popup and Connector pages</label>
+							<select id="appearance-select" class="select">
+								<option value="contrast">Contrast with the page (dark popup on light pages, light on dark)</option>
+								<option value="dark">Always dark</option>
+								<option value="light">Always light</option>
+								<option value="system">Match the browser theme</option>
+							</select>
 						</div>
 					</div>
 					<div class="card">

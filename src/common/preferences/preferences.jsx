@@ -183,7 +183,22 @@ Zotero_Preferences.General = {
 		ReactDOM.render(React.createElement(Zotero_Preferences.Components.ClientStatus, null),
 			document.getElementById("client-status"));
 
-		let shortcut = Zotero.isMac ? '⌘⇧S' : 'Ctrl+Shift+S';
+		// Appearance: the pref is the source of truth; theme.js keeps a copy in localStorage so
+		// pages can paint correctly before prefs load. Frames get it from the content script.
+		let appearance = document.getElementById('appearance-select');
+		appearance.value = AbstractusTheme.mode;
+		Zotero.Prefs.getAsync('appearance').then((mode) => {
+			if (!AbstractusTheme.MODES.includes(mode)) mode = 'contrast';
+			appearance.value = mode;
+			if (AbstractusTheme.mode !== mode) AbstractusTheme.set(mode);
+		});
+		appearance.addEventListener('change', () => {
+			Zotero.Prefs.set('appearance', appearance.value);
+			AbstractusTheme.set(appearance.value);
+		});
+
+		// A for Abstractus (Zotero uses S); keep in sync with "commands" in the manifests
+		let shortcut = Zotero.isMac ? '⌘⇧A' : 'Ctrl+Shift+A';
 		document.getElementById('saving-how-to').innerHTML = Zotero.getString('preferences_saving_howTo',
 			`<kbd>${shortcut}</kbd>`);
 

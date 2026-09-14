@@ -225,7 +225,7 @@ var Zotero = global.Zotero = new function() {
 		Zotero.Schema.init();
 		await this._initDateFormatsJSON();
 		Zotero.Prefs.loadNamespace(['translators.', 'downloadAssociatedFiles', 'automaticSnapshots', 'automaticTags',
-			'reportTranslationFailure', 'capitalizeTitles']);
+			'reportTranslationFailure', 'capitalizeTitles', 'appearance']);
 		await Zotero.Prefs.loadNamespace('debug');
 		
 		Zotero.Debug.init();
@@ -238,7 +238,7 @@ var Zotero = global.Zotero = new function() {
 		Zotero.Schema.init();
 		await this._initDateFormatsJSON();
 		await Zotero.Prefs.loadNamespace(['translators.', 'downloadAssociatedFiles', 'automaticSnapshots', 'automaticTags',
-			'reportTranslationFailure', 'capitalizeTitles']);
+			'reportTranslationFailure', 'capitalizeTitles', 'appearance']);
 	};
 
 	this._initDateFormatsJSON = async function() {
@@ -332,6 +332,8 @@ Zotero.Prefs = new function() {
 		"connector.url": ZOTERO_CONFIG.CONNECTOR_URL,
 		"capitalizeTitles": false,
 		"firstUse": true,
+		// Abstractus: popup and page palette (contrast | dark | light | system), see theme.js
+		"appearance": "contrast",
 		// Abstractus: never report translation failures to the Zotero repository
 		"reportTranslationFailure": false,
 		"singleFileConfig": {},

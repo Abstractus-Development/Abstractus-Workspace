@@ -20,9 +20,11 @@
 	--is-focus-ring: 0 0 0 3px rgba(26, 51, 182, 0.2);
 	--is-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 	--is-transition: 150ms ease;
-	color-scheme: dark;
+	color-scheme: light;
+}
 
-	/* Always-dark palette (Abstractus pages do not follow the OS theme) */
+/* Dark palette: applied by theme.js as data-theme="dark" (see theme.js for the modes) */
+:root[data-theme="dark"] {
 	--is-primary: #5f78e8;
 	--is-primary-hover: #8699ef;
 	--is-primary-subtle: rgba(95, 120, 232, 0.14);
@@ -39,6 +41,7 @@
 	--is-heading: #e8ecf4;
 	--is-focus-ring: 0 0 0 3px rgba(95, 120, 232, 0.35);
 	--is-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+	color-scheme: dark;
 }
 
 

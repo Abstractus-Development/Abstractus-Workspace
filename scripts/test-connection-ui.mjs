@@ -51,7 +51,32 @@ try {
   await settings.waitForSelector('#content-general.selected');
   await settings.waitForSelector('#abstractus-pair-native');
   assert.equal(await settings.$eval('.connection-backup',element=>element.open),false);
+  // A stored pairing the desktop no longer verifies ("Reconnect needed") still offers Disconnect,
+  // and the only states without it are the ones with nothing stored
+  const disconnectShown=async state=>settings.evaluate(state=>{document.getElementById('connect-actions').dataset.state=state;return getComputedStyle(document.getElementById('abstractus-pair-disconnect')).display!=='none';},state);
+  assert.equal(await disconnectShown('unverified'),true);assert.equal(await disconnectShown('connected'),true);
+  assert.equal(await disconnectShown('pairing_required'),false);assert.equal(await disconnectShown('offline'),false);
+  await settings.evaluate(()=>{document.getElementById('connect-actions').dataset.state='offline';});
+  console.log('PASS Disconnect is offered whenever a pairing is stored, including an unverifiable one.');
   await settings.waitForFunction(()=>getComputedStyle(document.getElementById('content-general')).opacity==='1');
+  // Appearance: contrast by default (the opposite of the browser theme, which headless Chrome takes
+  // from the OS), every mode paints immediately, and the choice persists as a pref across a reload
+  const theme=()=>settings.evaluate(()=>document.documentElement.dataset.theme);
+  const systemTheme=(await settings.evaluate(()=>matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light';
+  const opposite=systemTheme==='dark'?'light':'dark';
+  assert.equal(await settings.$eval('#appearance-select',s=>s.value),'contrast');
+  assert.equal(await theme(),opposite);
+  const bg=async()=>settings.evaluate(()=>getComputedStyle(document.body).backgroundColor);
+  await settings.select('#appearance-select','dark');assert.equal(await theme(),'dark');const darkBg=await bg();
+  await settings.select('#appearance-select','light');assert.equal(await theme(),'light');const lightBg=await bg();
+  assert.notEqual(lightBg,darkBg);
+  assert.equal(await worker.evaluate(()=>Zotero.Prefs.get('appearance')),'light');
+  await settings.reload();await settings.waitForSelector('#appearance-select');
+  assert.equal(await settings.$eval('#appearance-select',s=>s.value),'light');assert.equal(await theme(),'light');
+  await settings.select('#appearance-select','system');assert.equal(await theme(),systemTheme);
+  await settings.select('#appearance-select','dark');assert.equal(await theme(),'dark');assert.equal(await bg(),darkBg);
+  await settings.select('#appearance-select','contrast');assert.equal(await theme(),opposite);
+  console.log('PASS appearance setting: contrast default, light/dark/system switch instantly and persist.');
   await settings.screenshot({path:path.join(output,'connector-general-202.png')});
   const popup=await browser.newPage();await popup.setViewport({width:480,height:560});
   await popup.goto(url.replace('preferences.html','connect.html'));

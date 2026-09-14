@@ -49,8 +49,13 @@
 	--pw-mask-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.25' fill='none' stroke='black' stroke-width='1.5'/%3E%3Cpath d='M8 4.75v3.75' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11' r='.95' fill='black'/%3E%3C/svg%3E");
 	--pw-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 8.25 2.6 2.6L12 5.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 	--pw-icon-bang: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 4v4.75' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11.75' r='1.15' fill='white'/%3E%3C/svg%3E");
+	/* No color-scheme here: Chrome paints an iframe opaque when its root's used scheme differs
+	   from the embedding page's, so theme.js sets the page's own scheme on this root (from
+	   ?scheme=). The palette comes from data-theme; form controls get their scheme below. */
+}
 
-	/* Always-dark palette (Abstractus pages do not follow the OS theme) */
+/* Dark palette: applied by theme.js as data-theme="dark" (see theme.js for the modes) */
+:root[data-theme="dark"] {
 	--pw-primary: #5f78e8;
 	--pw-primary-hover: #8699ef;
 	--pw-primary-subtle: rgba(95, 120, 232, 0.16);
@@ -82,12 +87,18 @@
 	--pw-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.25' fill='none' stroke='%239aa5ba' stroke-width='1.5'/%3E%3Cpath d='m10.25 10.25 3.25 3.25' stroke='%239aa5ba' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
-/* Always-dark: rules formerly limited to dark mode */
-/* Per-control color-scheme (not on :root, which would make the iframe canvas opaque) */
-.ProgressWindow-box input,
-.ProgressWindow-box select,
-.ProgressWindow-box textarea,
-.ProgressWindow-targetSelector {
+/* Per-control color-scheme (never on :root, see above): form fields follow the palette,
+   not the page */
+:root[data-theme="light"] .ProgressWindow-box input,
+:root[data-theme="light"] .ProgressWindow-box select,
+:root[data-theme="light"] .ProgressWindow-box textarea,
+:root[data-theme="light"] .ProgressWindow-targetSelector {
+	color-scheme: light;
+}
+:root[data-theme="dark"] .ProgressWindow-box input,
+:root[data-theme="dark"] .ProgressWindow-box select,
+:root[data-theme="dark"] .ProgressWindow-box textarea,
+:root[data-theme="dark"] .ProgressWindow-targetSelector {
 	color-scheme: dark;
 }
 

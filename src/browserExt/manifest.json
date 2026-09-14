@@ -58,7 +58,7 @@
 	"commands": {
 		"_execute_browser_action": {
 			"suggested_key": {
-				"default": "Ctrl+Shift+S"
+				"default": "Ctrl+Shift+A"
 			}
 		}
 	},

@@ -31,22 +31,43 @@ Zotero.OffscreenManager = {
 	messagingDeferred: Zotero.Promise.defer(),
 	offscreenUrl: 'offscreen/offscreen.html',
 	
+	// Chrome allows exactly one offscreen document. Right after the worker starts, the
+	// startup path and content scripts in already-open tabs all ask for it at once, so
+	// every caller shares one in-flight initialization instead of racing createDocument().
 	async init() {
+		if (this._initializing) return this._initializing;
+		this._initializing = this._init().finally(() => { this._initializing = null; });
+		return this._initializing;
+	},
+
+	async _init() {
 		const offscreenPage = await this.getOffscreenPage();
-		if (!offscreenPage) {
-			// Make sure we're waiting for a new deferred
-			this.messagingDeferred = Zotero.Promise.defer();
-			// Create offscreen document
-			await browser.offscreen.createDocument({
-				url: this.offscreenUrl,
-				reasons: ['DOM_PARSER'],
-				justification: 'Scraping the document with Zotero Translators',
-			});
-		}
-		else {
+		if (offscreenPage) {
 			// Technically the service worker can restart without the offscreen
 			// page being unloaded per Chrome docs, although not clear whether this would actually happen in practice.
 			offscreenPage.postMessage('service-worker-restarted');
+		}
+		else if (await this.hasDocument()) {
+			// Created moments ago (possibly by a previous worker) and still loading: it is not a
+			// client yet, but it will post its port as soon as it is ready. Keep waiting on the
+			// current deferred rather than creating a second document.
+		}
+		else {
+			// Make sure we're waiting for a new deferred
+			this.messagingDeferred = Zotero.Promise.defer();
+			// Create offscreen document
+			try {
+				await browser.offscreen.createDocument({
+					url: this.offscreenUrl,
+					reasons: ['DOM_PARSER'],
+					justification: 'Scraping the document with Zotero Translators',
+				});
+			}
+			catch (e) {
+				// Lost the race with another creator between the check and the call; its
+				// document is the one we will hear from.
+				if (!/single offscreen document/i.test(e?.message || '')) throw e;
+			}
 		}
 		await this.messagingDeferred.promise;
 		
@@ -103,6 +124,16 @@ Zotero.OffscreenManager = {
 		const matchedClients = await self.clients.matchAll();
 		return matchedClients.find(client => client.url.includes(this.offscreenUrl));
 
+	},
+
+	// Whether an offscreen document exists at all, loaded or not (Chrome 116+).
+	async hasDocument() {
+		try {
+			return typeof browser.offscreen.hasDocument == 'function' && await browser.offscreen.hasDocument();
+		}
+		catch (e) {
+			return false;
+		}
 	}
 }
 
