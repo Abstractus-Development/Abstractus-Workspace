@@ -6,6 +6,9 @@ jobs:
   compatibility:
     runs-on: windows-latest
     steps:
+      # See ci.yml: the zotero submodule's symlinks into its own node_modules dangle for us,
+      # and a dangling symlink under src/ breaks gulp's directory walk.
+      - run: git config --global core.symlinks false
       - uses: actions/checkout@v4
         with:
           submodules: recursive

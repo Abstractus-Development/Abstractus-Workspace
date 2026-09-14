@@ -173,8 +173,19 @@
         try {
           if(!await browser.permissions.contains({permissions:['nativeMessaging']}))throw new Error('Allow the browser connection permission, or use a code.');
           let reply;
-          try {reply=await browser.runtime.sendNativeMessage('ai.abstractus.desktop',{action:'connect',browser:browserBrand(),install:await installId()});}
+          try {
+            // A host that accepts the connection and then never answers (hung process, an
+            // approval window left open) would otherwise keep nativePending set for the life
+            // of the worker, wedging every later attempt with no way back. The desktop gives
+            // up on its own approval after 90s, so this only ever fires on a genuine hang.
+            let timer;
+            reply=await Promise.race([
+              browser.runtime.sendNativeMessage('ai.abstractus.desktop',{action:'connect',browser:browserBrand(),install:await installId()}),
+              new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Abstractus Desktop did not answer. Make sure it is open, then click Connect again, or use a connection code below.')),120000);})
+            ]).finally(()=>clearTimeout(timer));
+          }
           catch(e) {
+            if(/did not answer/.test(String(e?.message||'')))throw e;
             // Surface Chrome's own reason (host not found / forbidden / exited) so setup problems are diagnosable
             const reason=String(e?.message||e||'').replace(/\s+/g,' ').slice(0,200);
             throw new Error(`Click-to-connect is not available${reason?` (${reason})`:''}. Open an updated Abstractus Desktop, or use a connection code below.`);

@@ -39,6 +39,7 @@
     "build:debug": "node scripts/build.mjs -d",
     "package": "node scripts/build.mjs --zip",
     "release": "node scripts/release.mjs",
+    "preflight": "npm run test:ci && npm audit --audit-level=moderate",
     "watch": "gulp watch",
     "test": "mocha",
     "update-single-file": "scripts/update-single-file",

@@ -220,7 +220,10 @@ Zotero.HTTP = new function() {
 			let replaceHeaders = HEADERS_SPECIAL_HANDLING.filter(header => !!options.headers[header])
 				.map(header => {
 					const val = { name: header, value: options.headers[header] }
-					delete options.headers['User-Agent'];
+					// Remove the header being relocated to the DNR rule, not always User-Agent:
+					// leaving Cookie/Referer on the request too made this path inconsistent
+					// with the MV3 one below.
+					delete options.headers[header];
 					return val;
 				});
 			if (replaceHeaders.length) {

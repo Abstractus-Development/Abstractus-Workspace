@@ -6,6 +6,13 @@ jobs:
   isolated:
     runs-on: windows-latest
     steps:
+      # The zotero submodule tracks ~20 symlinks into its own node_modules (resource/ace ->
+      # ../node_modules/ace-builds/src/ and friends), which we never populate. Windows
+      # developer machines check these out as plain text files because core.symlinks
+      # defaults to false there, but the runner has symlink privilege and creates real,
+      # dangling ones — and a dangling symlink anywhere under src/ makes gulp's directory
+      # walk fail with ENOENT. Match the developer environment so the build sees the same tree.
+      - run: git config --global core.symlinks false
       - uses: actions/checkout@v4
         with:
           submodules: recursive

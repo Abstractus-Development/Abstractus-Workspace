@@ -207,6 +207,7 @@ Zotero.WebRequestIntercept = {
 		}];
 		// Keep the service worker alive while the rule is active
 		Zotero.Connector_Browser.setKeepServiceWorkerAlive(true);
+		this._activeRules.add(ruleID);
 		try {
 			await browser.declarativeNetRequest.updateSessionRules({
 				removeRuleIds: rules.map(r => r.id),
@@ -224,12 +225,22 @@ Zotero.WebRequestIntercept = {
 		}
 		catch (e) {
 			Zotero.logError(e);
+			// Release the keep-alive we just took; the rule never became active
+			await Zotero.WebRequestIntercept.removeRuleDNR(ruleID);
 		}
 		return ruleID;
 	},
-	
+
+	// Rules still holding a keep-alive. Both the caller and the 60-second safety timer remove
+	// each rule, so without this the counter was decremented twice per request and drifted
+	// negative — and a negative count is truthy, which pinned the service worker alive for the
+	// rest of the browser session.
+	_activeRules: new Set(),
+
 	removeRuleDNR: async function(ruleId) {
-		Zotero.Connector_Browser.setKeepServiceWorkerAlive(false);
+		if (Zotero.WebRequestIntercept._activeRules.delete(ruleId)) {
+			Zotero.Connector_Browser.setKeepServiceWorkerAlive(false);
+		}
 		return browser.declarativeNetRequest.updateSessionRules({ removeRuleIds: [ruleId] });
 	}
 }
