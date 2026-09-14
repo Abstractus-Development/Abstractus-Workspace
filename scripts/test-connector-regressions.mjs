@@ -82,7 +82,10 @@ vm.runInContext(await read('src/common/network-policy.js'),context);
 await test('Publisher URLs and own packaged resources pass; private, HTTP and foreign extension URLs fail',async()=>{
   const validate=context.Zotero.AbstractusNetwork.validate;
   for(const url of ['https://www.sciencedirect.com/science/article/pii/S1877056826002148','https://pubmed.ncbi.nlm.nih.gov/123/','chrome-extension://test-extension/utilities/resource/dateFormats.json'])assert.equal(validate(url),url);
-  for(const url of ['http://publisher.org/','https://127.0.0.1/','https://2130706433/','https://[::1]/','https://localhost/','https://host.internal/','https://192.168.1.1/','https://publisher.org:8443/','https://user:password@publisher.org/','chrome-extension://foreign/resource.json'])assert.throws(()=>validate(url));
+  // Plain http from a translator (arXiv's OAI endpoint) is upgraded, never sent in the clear
+  assert.equal(validate('http://export.arxiv.org/oai2?verb=GetRecord&identifier=oai:arXiv.org:2609.12223'),'https://export.arxiv.org/oai2?verb=GetRecord&identifier=oai:arXiv.org:2609.12223');
+  assert.equal(validate('http://publisher.org:80/a'),'https://publisher.org/a');
+  for(const url of ['http://publisher.org:8080/','http://127.0.0.1:23130/connector/ping','https://127.0.0.1/','https://2130706433/','https://[::1]/','https://localhost/','https://host.internal/','https://192.168.1.1/','https://publisher.org:8443/','https://user:password@publisher.org/','http://user:password@publisher.org/','chrome-extension://foreign/resource.json'])assert.throws(()=>validate(url));
 });
 
 let headerListener;const pending=[],lookups=[],updates=[],tabInfo={};let tabResult={id:7,url:'https://publisher.org/paper.pdf'}, closed=false;
@@ -107,12 +110,18 @@ await test('Native connection stays restricted to own setup pages and never retu
   context.browser.permissions={contains:async()=>true};
   // Chrome lists a garbled placeholder brand first; the real brand must be the one reported
   context.navigator={userAgentData:{brands:[{brand:'Not;A=Brand',version:'99'},{brand:'Chromium',version:'131'},{brand:'Google Chrome',version:'131'}]},userAgent:'Mozilla/5.0 Chrome/131'};
-  context.browser.runtime.sendNativeMessage=async(host,message)=>{calls++;assert.equal(host,'ai.abstractus.desktop');assert.deepEqual(Object.keys(message).sort(),['action','browser']);assert.equal(message.action,'connect');assert.equal(message.browser,'Google Chrome');return {code:id+':'+key};};
+  const installs=[];
+  context.browser.runtime.sendNativeMessage=async(host,message)=>{calls++;assert.equal(host,'ai.abstractus.desktop');assert.deepEqual(Object.keys(message).sort(),['action','browser','install']);assert.equal(message.action,'connect');assert.equal(message.browser,'Google Chrome');assert.match(message.install,/^[a-f0-9]{32}$/);installs.push(message.install);return {code:id+':'+key};};
   for(const foreign of [{id:'test-extension',url:'https://publisher.org/'},{id:'foreign',url:sender.url}])await assert.rejects(()=>listener({type:'abstractus-pair',action:'native'},foreign));
   assert.equal(calls,0);
   reply='signed';
   const result=await listener({type:'abstractus-pair',action:'native'},{id:'test-extension',url:'chrome-extension://test-extension/preferences/connect.html'});
   assert.equal(result.connected,true);assert(!JSON.stringify(result).includes(key));assert.equal(calls,1);
+  await action('disconnect');
+  // The profile's install ID is stable across connections (it is what lets the desktop replace
+  // this profile's pairing instead of adding one), and survives a disconnect
+  await listener({type:'abstractus-pair',action:'native'},{id:'test-extension',url:'chrome-extension://test-extension/preferences/connect.html'});
+  assert.equal(installs.length,2);assert.equal(installs[0],installs[1]);
   await action('disconnect');
 });
 await test('Declined native approval and a spoofed desktop never establish a connection',async()=>{
@@ -129,7 +138,8 @@ await test('Native approval is single-flight and requires the optional browser p
   await assert.rejects(()=>action('native'),/permission/);assert.equal(calls,0);
   context.browser.permissions.contains=async()=>true;
   let release;context.browser.runtime.sendNativeMessage=()=>new Promise(resolve=>{release=resolve;});
-  const pending=action('native');await Promise.resolve();await Promise.resolve();
+  const pending=action('native');
+  while(!release)await new Promise(r=>setTimeout(r,5));
   await assert.rejects(()=>action('native'),/already open/);
   reply='signed';release({code:id+':'+key});assert.equal((await pending).connected,true);
   await action('disconnect');

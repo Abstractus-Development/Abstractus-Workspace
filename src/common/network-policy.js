@@ -16,6 +16,9 @@ Zotero.AbstractusNetwork = {
     // Compare protocol AND host: URL.origin can be "null" for extension schemes.
     const own=new URL(browser.runtime.getURL('/'));
     if(parsed.protocol===own.protocol && parsed.host===own.host && !parsed.username && !parsed.password) return parsed.href;
+    // Translators still carry plain-http API addresses (arXiv's OAI endpoint, for one). Those
+    // requests go over HTTPS instead of being refused; a publisher without HTTPS simply fails.
+    if(parsed.protocol==='http:' && (!parsed.port || parsed.port==='80')) { parsed.protocol='https:'; parsed.port=''; }
     if(parsed.protocol!=='https:' || parsed.username || parsed.password || (parsed.port && parsed.port!=='443')
       || !host.includes('.') || /^\[/.test(host) || /^[\d.]+$/.test(host) || parsed.hostname.endsWith('.')
       || /(^|\.)(localhost|local|internal|lan|home|test|invalid)$/.test(host)) {

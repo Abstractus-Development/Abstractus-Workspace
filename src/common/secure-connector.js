@@ -35,7 +35,7 @@
     if (!/^[a-f0-9-]{36}:[a-f0-9]{64}$/.test(code)) throw new Error('Paste the complete connection code from Abstractus Library.');
     const [id,key]=code.split(':'); return {id,key};
   };
-  async function store(value, remove=false) {
+  async function store(value, remove=false, name='key') {
     const db=await new Promise((resolve,reject)=>{
       const request=indexedDB.open('abstractus-browser-connection',1);
       request.onupgradeneeded=()=>request.result.createObjectStore('connection');
@@ -45,10 +45,18 @@
     try { return await new Promise((resolve,reject)=>{
       const transaction=db.transaction('connection',value!==undefined || remove ? 'readwrite':'readonly');
       const object=transaction.objectStore('connection');
-      const request=remove?object.delete('key'):value!==undefined?object.put(value,'key'):object.get('key');
+      const request=remove?object.delete(name):value!==undefined?object.put(value,name):object.get(name);
       let result; request.onsuccess=()=>{result=request.result;};
       transaction.oncomplete=()=>resolve(result); transaction.onerror=()=>reject(new Error('Cannot save browser connection'));
     }); } finally { db.close(); }
+  }
+  // Identifies this browser profile to the desktop (each profile has its own extension storage),
+  // so reconnecting replaces this profile's pairing and never another profile's. Random, kept
+  // for the life of the install; a reinstall is a new profile as far as the desktop knows.
+  async function installId() {
+    let id=await store(undefined,false,'install');
+    if(!/^[a-f0-9]{32}$/.test(id||'')){ id=nonce(); await store(id,false,'install'); }
+    return id;
   }
   async function bytes(body) {
     if(body==null)return new Uint8Array();
@@ -165,7 +173,7 @@
         try {
           if(!await browser.permissions.contains({permissions:['nativeMessaging']}))throw new Error('Allow the browser connection permission, or use a code.');
           let reply;
-          try {reply=await browser.runtime.sendNativeMessage('ai.abstractus.desktop',{action:'connect',browser:browserBrand()});}
+          try {reply=await browser.runtime.sendNativeMessage('ai.abstractus.desktop',{action:'connect',browser:browserBrand(),install:await installId()});}
           catch(e) {
             // Surface Chrome's own reason (host not found / forbidden / exited) so setup problems are diagnosable
             const reason=String(e?.message||e||'').replace(/\s+/g,' ').slice(0,200);
