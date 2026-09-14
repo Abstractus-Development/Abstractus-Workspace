@@ -190,7 +190,10 @@ if (!DEBUG) gulpArgs.push('-p');
 const gulp = spawnSync(process.execPath, gulpArgs, { cwd: ROOT, encoding: 'utf8' });
 fs.writeFileSync(path.join(ROOT, 'build.log'), (gulp.stdout || '') + (gulp.stderr || ''));
 if (gulp.status !== 0) {
-	fail(`gulp exited with ${gulp.status}. See build.log.`);
+	// Print the output as well as writing it: on CI nobody can open build.log, and a bare
+	// "see build.log" hides the actual error behind a whole debugging round-trip.
+	process.stderr.write((gulp.stdout || '') + (gulp.stderr || ''));
+	fail(`gulp exited with ${gulp.status} (output above, also in build.log).`);
 }
 
 for (const browser of ['manifestv3', 'firefox']) {

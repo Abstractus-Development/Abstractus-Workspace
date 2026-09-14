@@ -27,3 +27,4 @@ jobs:
           path: |
             .test-results/bench.json
             .test-results/connector-tags*.png
+            build.log
