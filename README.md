@@ -1,155 +1,120 @@
-# Zotero Connectors
+# Abstractus Connector
 
-[![Build Status](https://travis-ci.org/zotero/zotero-connectors.svg?branch=master)](https://travis-ci.org/zotero/zotero-connectors)
+A browser extension that saves articles, PDFs and search results straight into **Abstractus Desktop**.
+It is a fork of the [Zotero Connector](https://github.com/zotero/zotero-connectors) and keeps its
+translation engine, so it understands the same thousands of publisher, database and library sites.
+
+- **Chromium** (Chrome, Edge, Brave, Arc): Manifest V3 build in `build/manifestv3`
+- **Firefox**: Manifest V2 build in `build/firefox`
+
+## How it works
+
+```
+ web page ──(site translator)──▶ Connector ──HTTP 127.0.0.1:23130──▶ Abstractus Desktop vault
+                                     ▲
+                 repo.zotero.org ────┘  translator updates every 24 h
+```
+
+1. **Detect.** Site translators (the page parsers) are downloaded from the Zotero translator repository
+   and refreshed every 24 hours, so parsing fixes arrive without a new Connector release.
+2. **Save.** The Connector sends the item metadata (Zotero JSON plus a CSL-JSON copy) and any PDF to
+   the local connector server built into Abstractus Desktop
+   (`src-tauri/src/connector.rs` in the desktop repo). It speaks the Zotero connector protocol v3
+   (`ping`, `getSelectedCollection`, `saveItems`, `saveAttachment`, `saveStandaloneAttachment`,
+   `saveSnapshot`, `updateSession`).
+3. **File.** The save popup lets you pick a vault collection and add tags.
+
+Abstractus Desktop must be running. If it isn't, the Connector prompts you to open it; nothing is sent
+anywhere else.
 
 ## Building
 
-1. `git clone https://github.com/zotero/zotero-connectors.git`
-1. `cd zotero-connectors`
-1. `git submodule update --init`
-1. `npm install`
-1. `./build.sh -d`
+Requirements: Node 20+, git.
 
-The connectors are built in `build/`.
-
-The build needs only the top-level submodules, so `git submodule update --init`
-(without `--recursive`) is enough.
-
-### Updating SingleFile Core
-
-The generated SingleFile Core bundles in `lib/SingleFile` are committed and copied into normal builds without rebuilding them. To update and regenerate them, run:
-
-```
-npm run update-single-file -- <version>
+```sh
+git submodule update --init   # translate engine, utilities, item-type icons, schema
+npm install
+npm run build                 # production build → build/manifestv3 and build/firefox
+npm run build:debug           # adds translator tester and test pages
+npm run package               # also writes dist/Abstractus_Connector-{chrome,firefox}-<version>.zip
 ```
 
-Omit `<version>` to use the latest published version. Normal builds copy the committed bundles without rebuilding them.
+The build script (`scripts/build.mjs`) works on Windows, macOS and Linux; `build.sh` is a thin wrapper.
+The version comes from `package.json` (override with `-v`). Keep it in the 5.0.x range: the translator
+repository uses it to decide which translators are compatible.
 
-## Running from the build directory
+Set `ABSTRACTUS_CONNECTOR_URL` at build time to point the Connector at a different desktop port.
 
-### Chrome
+### Loading the unpacked extension
 
-1. Go to chrome://extensions/
-1. Enable "Developer Mode".
-1. Click "Load unpacked extension…" and select the `build/browserExt` directory.
+- **Chrome / Edge:** open `chrome://extensions` (or `edge://extensions`), enable Developer Mode, choose
+  **Load unpacked** and select `build/manifestv3`.
+- **Firefox:** open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on** and select
+  `build/firefox/manifest.json`.
 
-### Firefox
+`npm run watch` rebuilds changed files; reload the extension afterwards.
 
-1. Go to about:debugging
-1. Click "Load Temporary Add-on" and select the `build/browserExt/manifest.json` file.
+## Staying in sync with upstream Zotero
 
-### Safari
+Parser fixes come from two places, and both keep flowing.
 
-See https://github.com/zotero/safari-app-extension 
+| What | How it updates |
+| --- | --- |
+| Site translators (per-site parsing rules) | Automatically, at runtime, from `repo.zotero.org` every 24 h. No action needed. |
+| Translation engine, utilities, schema (`src/translate`, `src/utilities`, `src/zotero-schema`) | Git submodules. Bumped when you merge upstream. |
+| Connector code (saving, proxies, bot bypass, SingleFile, …) | Merge from the upstream repository. |
 
-## Automatic rebuilding
+The `upstream` remote points at `https://github.com/zotero/zotero-connectors`. To pull in upstream work:
 
-1. `cd` to project root
-1. `npm install`
-1. `build.sh -d`
-1. `gulp watch`
+```sh
+git fetch upstream
+git merge upstream/master
+git submodule update --init
+npm install
+npm run build
+```
 
-As files are changed, the connectors will be rebuilt automatically. You will need to manually reload the extension
-in the browser being developed for.
+### Where conflicts are likely
 
-## Requirements for packaging extensions from the command line
+The fork was kept close to upstream to keep merges small. Expect conflicts mainly in:
 
-* Copy `config.sh-sample` to `config.sh` and modify as necessary
+- `src/common/zotero_config.js`, `src/messages.json`, both manifests: branding and endpoints (keep ours)
+- `gulpfile.js` and `build.sh` / `scripts/build.mjs`: Safari and Google Docs build steps were removed.
+  If upstream adds a new library or file list entry, port it into `scripts/build.mjs`.
+- `src/common/preferences/*`, `src/common/ui/ProgressWindow.jsx`, `*.css`: redesigned UI
+- `src/common/itemSaver*.js`, `src/common/inject/pageSaving.js`, `src/common/inject/inject.jsx`: the
+  zotero.org fallback was removed and replaced with an "Is Abstractus Desktop running?" prompt
+- Files deleted in this fork (see below): if upstream modifies them, keep them deleted.
 
-# Developing
+Shared code still contains `Zotero.isSafari` branches. They are dead code in our builds, but were left
+in place on purpose so upstream changes merge cleanly.
 
-An overview of the Zotero Connector architecture.
+## What was removed from the Zotero Connector
 
-## Technologies
+- Saving to zotero.org (web API, OAuth, `api.js`, `oauthsimple.js`)
+- Google Docs citation integration (submodule and content scripts)
+- Safari build and Safari-only scripts
+- Automatic RIS/BibTeX/CSL file importing (`contentTypeHandler.js`, confirm page, DNR style rules)
+- Error and debug report submission to zotero.org (logs can still be viewed and copied locally)
+- Reporting broken translators to the Zotero repository
+- Zotero 7 Windows updater workaround (`updaterFix.js`)
+- Zotero release/signing scripts for Chrome, Edge and Firefox, and non-English locales
 
-##### Chrome/Firefox Browser Extension Framework
+## Layout
 
-The extension uses the WebExtension API cross-browser technology. See [Chrome Extension docs](https://developer.chrome.com/extensions)
-and [Firefox Extension docs](https://developer.mozilla.org/en-US/Add-ons/WebExtensions) for more information.
+| Path | Contents |
+| --- | --- |
+| `src/common` | Shared code: background logic, injected scripts, UI (React) |
+| `src/browserExt` | WebExtension-specific code, manifests, offscreen translation (MV3) |
+| `src/messages.json` | English UI strings |
+| `icons/`, `src/common/images/` | Abstractus icons (some keep Zotero file names so code paths stay unchanged) |
+| `scripts/build.mjs` | Build and packaging |
+| `test/` | Puppeteer/Mocha tests (`scripts/runtests.sh`) |
 
-##### Safari Extension Framework
+## License
 
-For Safari specifics see https://github.com/zotero/safari-app-extension
+AGPL-3.0, like the Zotero Connector it is based on. See `COPYING`.
 
-##### Zotero Translator Framework
+## Abstractus development and release status
 
-The Connectors use the [Zotero translate architecture](https://github.com/zotero/translate), to support page translation.
-A basic understanding of how translation works is highly useful in understanding the codebase.
-
-## Components
-
-Saving resources to Zotero library is facilitated by two major components: the Zotero Connector running in the browser
-and either the Zotero client or zotero.org web api. The Zotero Connector itself is split into two components: 
-code running on the webpage and a background process.
-
-<img src="http://i.imgur.com/4r2qRqe.png" width="600"/>
-
-
-##### a) Injected scripts for individual webpages
-
-Each webpage is injected ([Chrome](https://developer.chrome.com/extensions/content_scripts)/[Firefox](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/Content_scripts)/[Safari](https://developer.apple.com/documentation/safariservices/injecting-a-script-into-a-webpage))
-with a full Zotero [translation framework](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/gulpfile.js#L45-L79).
-A [*Zotero.Translate.Web*](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/inject/inject.jsx#L314-L314) 
-instance orchestrates running individual translators for detection and translation.
-
-The translation framework provides custom classes concerning 
-[translator retrieval](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/translators.js) 
-and [item saving](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/translate_item.js).
-These custom classes talk to the background process (b) of the Zotero Connector for functionality outside the translation
-framework, such as retrieving translator code and sending translated items either to Zotero (c) or zotero.org (d).
-
-##### b) Background process
-
-The Connector runs a [background process](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/gulpfile.js#L95-L125) 
-([Chrome](https://developer.chrome.com/extensions/event_pages)/[Firefox](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/Anatomy_of_a_WebExtension#Background_scripts)/[Safari](https://developer.apple.com/documentation/safariservices/building-a-safari-app-extension))
-which works as a middle-layer between the translation framework running in inject scripts (a) and Zotero (c) or zotero.org (d).
-
-The background process maintains a cache of translators and performs the initial [translator detection using URL matching](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/translators.js#L140-L196).
-Translators whose target regexp matches the URL of a given webpage are then further tested by running `detectWeb()` 
-in injected scripts. A list of translators and their code is
-fetched either from [Zotero (c) or zotero.org (d)](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/repo.js#L140-L155).
-
-The background process is also responsible for updating the extension UI, kicking off translations, storing and 
-retrieving connector preferences and sending translated items to Zotero or zotero.org. Browser specific scripts are
-available for [BrowserExt](https://github.com/zotero/zotero-connectors/blob/master/src/browserExt/background.js)
-and [Safari](https://github.com/zotero/zotero-connectors/blob/master/src/safari/global.html).
-
-##### c) Connector server in Zotero
-
-When Zotero is open it runs a [connector HTTP server](https://www.zotero.org/support/dev/client_coding/connector_http_server)
-on port 23119. The HTTP server API accommodates interactions between the Connectors and Zotero client. Calls to
-[*Zotero.Connector.callMethod(endpoint)*](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/connector.js#L150) 
-in this codebase are translated to HTTP requests to the connector server.
-
-Note that Zotero cannot interact with the connectors on its own accord. All communication is Connector initiated.
-
-##### d) zotero.org API
-
-When Zotero is not available item saving falls back to
-using [zotero.org API](https://www.zotero.org/support/dev/web_api/v3/start).
-The interactions with zotero.org API are defined in [api.js](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/api.js)
-
-## Message passing
-
-The only way for the background extension process and injected scripts to communicate is using the message passing
-protocol provided by the browsers ([Chrome](https://developer.chrome.com/extensions/messaging)/[Firefox](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/Content_scripts#Communicating_with_background_scripts)/[Safari](https://developer.apple.com/documentation/safariservices/passing-messages-between-safari-app-extensions-and-injected-scripts)). 
-Injected scripts often need to communicate to background scripts. To simplify
-these interactions, calls to functions in background scripts are monkey-patched in injected scripts. These calls are
-asynchronous and if a return value is required, it is provided either to a callback function as the last argument of
-the call or as a resolving value of a promise returned.
-
-[*messages.js*](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/messages.js)
-contains the list of the monkey-patched methods. If the method value is false no response is expected, otherwise
-the calls provide a response. An optional pre-send processing on the background end and post-receive processing
-on the injected end is possible to treat values that cannot be sent as-is via the messaging protocol.
-
-The background process registers message listeners in [*messaging.js*](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/common/messaging.js).
-`Zotero.Messaging` class also provides a way to send messages to injected scripts and add custom message listeners.
-
-The injected scripts monkey-patch methods in *messaging_injected.js*([BrowserExt](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/browserExt/messaging_inject.js)/[Safari](https://github.com/zotero/zotero-connectors/blob/e1a16c8ad2e17c6893554c3f376384e18182202d/src/safari/messaging_inject.js))
-`Zotero.Messaging` class also provides a way to send messages to the background process and add message listeners.
-
-## Contact
-
-If you have any questions about developing Zotero Connectors you can join the discussion in the
-[zotero-dev mailing list](https://groups.google.com/forum/#!forum/zotero-dev).
+See [TESTING.md](TESTING.md) for isolated benches and one-time desktop pairing, and [UPSTREAM-SYNC.md](UPSTREAM-SYNC.md) for reviewing Zotero updates without overwriting this fork. Production builds use original orange-book branding and modern line icons; legacy asset filenames remain for compatibility. Customer updates use the existing extension-store listing; local unpacked extensions must be reloaded. The desktop release/security documents list the remaining public-release gates.

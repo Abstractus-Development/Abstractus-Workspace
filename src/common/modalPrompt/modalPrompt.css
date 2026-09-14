@@ -1,5 +1,52 @@
+/* Abstractus Connector — modal prompt (rendered in a full-page transparent iframe) */
+
+:root {
+	--mp-font: Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+	--mp-primary: #1a33b6;
+	--mp-primary-hover: #142a94;
+	--mp-on-primary: #ffffff;
+	--mp-surface: #ffffff;
+	--mp-surface-subtle: #f0f2f6;
+	--mp-surface-hover: #e7ebf2;
+	--mp-border: #d6dce7;
+	--mp-border-strong: #b9c2d3;
+	--mp-text: #0f172a;
+	--mp-muted: #5b6475;
+	--mp-heading: #0f2073;
+	--mp-overlay: rgba(15, 23, 42, 0.38);
+	--mp-focus-ring: 0 0 0 3px rgba(26, 51, 182, 0.22);
+	--mp-shadow: 0 24px 60px -18px rgba(15, 32, 115, 0.45), 0 10px 30px -12px rgba(15, 32, 115, 0.35), 0 2px 6px rgba(15, 23, 42, 0.08);
+	--mp-transition: 150ms ease;
+
+	/* Always-dark palette (Abstractus pages do not follow the OS theme) */
+	--mp-primary: #5f78e8;
+	--mp-primary-hover: #8699ef;
+	--mp-surface: #161e30;
+	--mp-surface-subtle: #1e283e;
+	--mp-surface-hover: #26314a;
+	--mp-border: #3a4761;
+	--mp-border-strong: #4b5a78;
+	--mp-text: #e8ecf4;
+	--mp-muted: #9aa5ba;
+	--mp-heading: #e8ecf4;
+	--mp-overlay: rgba(3, 7, 18, 0.6);
+	--mp-focus-ring: 0 0 0 3px rgba(95, 120, 232, 0.38);
+	--mp-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Always-dark: rules formerly limited to dark mode */
+.ModalPrompt {
+	color-scheme: dark;
+}
+
+
 html {
 	overflow: hidden;
+	background: transparent;
+}
+
+body {
+	background: transparent;
 }
 
 #zotero-modal-prompt {
@@ -20,105 +67,179 @@ html {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: rgba(0, 0, 0, 0.1);
+	background-color: var(--mp-overlay);
+	-webkit-backdrop-filter: blur(4px);
+	backdrop-filter: blur(4px);
 	z-index: 2147483647;
+	animation: mp-fade 150ms ease-out;
 }
 
 .ModalPrompt {
 	box-sizing: border-box;
-	width: 600px;
-	max-width: calc(100% - 40px);
-	padding: 20px;
-	background-color: #f4f4f4;
-	color: #222;
-	border-radius: 8px;
-	box-shadow:
-		0 0 3px 0 #0000008c,
-		0 8px 40px 0 #00000040;
-	font: 14px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	width: 480px;
+	max-width: calc(100% - 32px);
+	max-height: calc(100% - 32px);
+	overflow: auto;
+	padding: 24px;
+	background-color: var(--mp-surface);
+	color: var(--mp-text);
+	border: 1px solid var(--mp-border);
+	border-radius: 14px;
+	box-shadow: var(--mp-shadow);
+	font: 400 13.5px/1.5 var(--mp-font);
+	-webkit-font-smoothing: antialiased;
+	animation: mp-rise 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .ModalPrompt-content {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr);
-	gap: 20px;
+	grid-template-columns: 44px minmax(0, 1fr);
+	gap: 16px;
+	align-items: start;
 }
 
 .ModalPrompt-icon {
 	display: block;
-	width: 64px;
-	height: 64px;
+	width: 44px;
+	height: 44px;
+	border-radius: 10px;
+	object-fit: contain;
 }
 
 .ModalPrompt-title {
-	color: inherit;
-	margin: 0 0 16px;
-	font-size: 17px;
-	line-height: 1.2;
-	font-weight: 700;
+	color: var(--mp-heading);
+	margin: 2px 0 6px;
+	font-size: 16px;
+	line-height: 1.3;
+	font-weight: 650;
+	letter-spacing: -0.01em;
 }
 
 .ModalPrompt-body {
-	color: inherit;
+	color: var(--mp-muted);
 	font-weight: 400;
 	margin: 0;
+	overflow-wrap: anywhere;
 }
 
 .ModalPrompt .checkbox,
 .ModalPrompt .input {
-	margin: 16px 0 0;
+	margin: 14px 0 0;
+}
+
+.ModalPrompt .checkbox label {
+	display: inline-flex;
+	align-items: flex-start;
+	color: var(--mp-text);
+	cursor: pointer;
+}
+
+.ModalPrompt input[type="checkbox"] {
+	accent-color: var(--mp-primary);
+	width: 15px;
+	height: 15px;
+	flex: none;
+}
+
+.ModalPrompt .input input {
+	box-sizing: border-box;
+	width: 100%;
+	height: 34px;
+	padding: 0 10px;
+	font: inherit;
+	color: var(--mp-text);
+	background: var(--mp-surface);
+	border: 1px solid var(--mp-border);
+	border-radius: 8px;
+	transition: border-color var(--mp-transition), box-shadow var(--mp-transition);
+}
+
+.ModalPrompt .input input:focus {
+	outline: none;
+	border-color: var(--mp-primary);
+	box-shadow: var(--mp-focus-ring);
 }
 
 .ModalPrompt-buttons {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
-	margin-top: 20px;
+	margin-top: 22px;
 }
 
 .ModalPrompt-button {
 	appearance: none;
+	-webkit-appearance: none;
 	box-sizing: border-box;
-	min-width: 120px;
+	min-width: 92px;
+	height: 34px;
+	padding: 0 16px;
 	text-align: center;
 	white-space: nowrap;
-	height: 28px;
-	padding: 0 11px;
-	background-color: transparent;
-	background-image:
-		linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)),
-		linear-gradient(#f4f4f4, #f4f4f4),
-		linear-gradient(180deg, rgba(0, 0, 0, 0.0578) 90.58%, rgba(0, 0, 0, 0.1622) 100%);
-	background-origin: border-box;
-	background-clip: padding-box, padding-box, border-box;
-	color: inherit;
-	border: 1px solid transparent;
-	border-radius: 4px;
-	box-shadow: 0 0 0 0.5px #0000000d;
-	font: inherit;
-	line-height: 26px;
-}
-
-.ModalPrompt--mac .ModalPrompt-button {
-	height: 22px;
-	line-height: 20px;
+	font: 600 13px/32px var(--mp-font);
+	color: var(--mp-text);
+	background-color: var(--mp-surface-subtle);
+	border: 1px solid var(--mp-border);
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background-color var(--mp-transition), border-color var(--mp-transition), box-shadow var(--mp-transition);
 }
 
 .ModalPrompt-button:not(:disabled):hover {
-	background-image:
-		linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)),
-		linear-gradient(#f4f4f4, #f4f4f4),
-		linear-gradient(180deg, rgba(0, 0, 0, 0.0578) 90.58%, rgba(0, 0, 0, 0.1622) 100%);
+	background-color: var(--mp-surface-hover);
+	border-color: var(--mp-border-strong);
 }
 
-.ModalPrompt-button:not(:disabled):active {
-	background-image:
-		linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)),
-		linear-gradient(#f4f4f4, #f4f4f4),
-		linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05));
+.ModalPrompt-button:focus {
+	outline: none;
 }
 
-.ModalPrompt a { color: #37f; text-decoration: none; }
-.ModalPrompt a:visited { color: #37f; }
-.ModalPrompt a:hover { color: #26d; text-decoration: underline; }
+.ModalPrompt-button:focus-visible {
+	box-shadow: 0 0 0 2px var(--mp-surface), 0 0 0 4px var(--mp-primary);
+}
+
+/* button1 (rightmost) is the primary action */
+.ModalPrompt-button[name="1"] {
+	color: var(--mp-on-primary);
+	background-color: var(--mp-primary);
+	border-color: transparent;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+}
+
+.ModalPrompt-button[name="1"]:not(:disabled):hover {
+	background-color: var(--mp-primary-hover);
+	border-color: transparent;
+}
+
+.ModalPrompt-button[name="1"]:focus-visible {
+	box-shadow: 0 0 0 2px var(--mp-surface), 0 0 0 4px var(--mp-primary);
+}
+
+.ModalPrompt-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.ModalPrompt a { color: var(--mp-primary); text-decoration: none; font-weight: 500; }
+.ModalPrompt a:visited { color: var(--mp-primary); }
+.ModalPrompt a:hover { color: var(--mp-primary-hover); text-decoration: underline; text-underline-offset: 2px; }
+
+@keyframes mp-fade {
+	from { opacity: 0; }
+}
+
+@keyframes mp-rise {
+	from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ModalPrompt-overlay,
+	.ModalPrompt {
+		animation: none;
+	}
+	.ModalPrompt * {
+		transition-duration: 0ms !important;
+	}
+}

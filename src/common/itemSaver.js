@@ -83,7 +83,7 @@ ItemSaver.prototype = {
 	},
 
 	/**
-	 * Saves items to Standalone or the server
+	 * Saves items to Abstractus Desktop
 	 * @param items Items in Zotero.Item.toArray() format
 	 * @param {Function} [attachmentCallback] A callback that receives information about attachment
 	 *     save progress. The callback will be called as attachmentCallback(attachment, false, error)
@@ -92,15 +92,7 @@ ItemSaver.prototype = {
 	 */
 	saveItems: async function (items, attachmentCallback, itemsDoneCallback=()=>0) {
 		Zotero.debug(`ItemSaver.saveItems: Saving ${items.length} items`);
-		try {
-			return await this._saveToZotero(items, attachmentCallback, itemsDoneCallback);
-		}
-		catch (e) {
-			if (e.status == 0) {
-				return this._saveToServer(items, attachmentCallback, itemsDoneCallback);
-			}
-  			throw e;
-		}
+		return this._saveToZotero(items, attachmentCallback, itemsDoneCallback);
 	},
 	
 	_saveToZotero: async function (items, attachmentCallback, itemsDoneCallback=()=>0) {
@@ -177,6 +169,13 @@ ItemSaver.prototype = {
 			item.attachments = item.attachments.filter((attachment) => {
 				return attachment.snapshot === false
 			});
+			// Abstractus Desktop stores references as CSL-JSON
+			try {
+				item.csl = Zotero.Utilities.Item.itemToCSLJSON(item);
+			}
+			catch (e) {
+				Zotero.debug(`ItemSaver: CSL-JSON conversion failed: ${e}`);
+			}
 		}
 		
 		await Zotero.Connector.callMethod("saveItems", payload)
@@ -367,140 +366,6 @@ ItemSaver.prototype = {
 		return false;
 	},
 
-	/**
-	 * Saves items to server
-	 * @param items Items in Zotero.Item.toArray() format
-	 * @param {Function} attachmentCallback A callback that receives information about attachment
-	 *     save progress. The callback will be called as attachmentCallback(attachment, false, error)
-	 *     on failure or attachmentCallback(attachment, progressPercent) periodically during saving.
-	 *     attachmentCallback() will be called with all attachments that will be saved
-	 */
-	_saveToServer: async function (items, attachmentCallback, itemsDoneCallback=()=>0) {
-		Zotero.debug(`ItemSaver._saveToServer: Saving ${items.length} items to server`);
-		var newItems = [], itemIndices = [];
-		const automaticTags = await Zotero.Prefs.getAsync("automaticTags");
-		
-		for(var i=0, n=items.length; i<n; i++) {
-			var item = items[i];
-			// deproxify url
-			if (this._proxy && item.url) {
-				item.url = this._proxy.toProper(item.url);
-			}
-			itemIndices[i] = newItems.length;
-			let apiItem = Zotero.Utilities.deepCopy(item);
-			if (!automaticTags && Array.isArray(apiItem.tags)) {
-				apiItem.tags = apiItem.tags.filter(tag => typeof tag !== 'object' || tag.type !== 1);
-			}
-			newItems = newItems.concat(Zotero.Utilities.Item.itemToAPIJSON(apiItem));
-			for (let attachment of item.attachments) {
-				attachment.id = Zotero.Utilities.randomString();
-			}
-		}
-		
-		let response = await Zotero.API.createItem(newItems);
-		try {
-			var resp = JSON.parse(response);
-		} catch(e) {
-			throw new Error("Unexpected response received from server");
-		}
-		
-		for (var key in resp.failed) {
-			throw new Error("Save to server failed with " + response.statusCode + " " + response);
-		}
-		
-		Zotero.debug("Translate: Save to server complete");
-		itemsDoneCallback(items);
-		
-		const prefs = await Zotero.Prefs.getAsync(["downloadAssociatedFiles", "automaticSnapshots"])
-
-		for (const item of items) {
-			for (const attachment of item.attachments) {
-				this._setAttachmentReferer(attachment);
-				
-				if (attachment.mimeType === 'text/html') {
-					if (prefs.automaticSnapshots) {
-						attachmentCallback(attachment, 0);
-					}
-				}
-				else if (prefs.downloadAssociatedFiles) {
-					attachmentCallback(attachment, 0);
-				}
-			}
-		}
-		for (var i=0; i<items.length; i++) {
-			var item = items[i], key = resp.success[itemIndices[i]];
-			item.key = key;
-			if (item.attachments && item.attachments.length) {
-				await this._saveAttachmentsToServer(key, this._getFileBaseNameFromItem(item),
-					item.attachments, prefs, attachmentCallback);
-			}
-		}
-		
-		return items;
-	},
-
-	/**
-	 *
-	 * @param {String} itemKey The key of the parent item
-	 * @param {String} baseName A string to use as the base name for attachments
-	 * @param {Object[]} attachments An array of attachment objects
-	 * @param {Object} prefs An object with the values of the downloadAssociatedFiles and automaticSnapshots preferences
-	 * @param {Function} attachmentCallback A callback that receives information about attachment
-	 *     save progress. The callback will be called as attachmentCallback(attachment, false, error)
-	 *     on failure or attachmentCallback(attachment, progressPercent) periodically during saving.
-	 * @private
-	 */
-	_saveAttachmentsToServer: async function(itemKey, baseName, attachments, prefs, attachmentCallback=()=>0) {
-		let promises = []
-		for (let attachment of attachments) {
-			Zotero.debug(`ItemSaver._saveAttachmentsToServer: Saving attachment ${attachment.title} to server`);
-			let isSnapshot = false;
-			if (attachment.mimeType) {
-				switch (attachment.mimeType.toLowerCase()) {
-					case "text/html":
-					case "application/xhtml+xml":
-						isSnapshot = true;
-				}
-			}
-
-			if ((isSnapshot && !prefs.automaticSnapshots) || (!isSnapshot && !prefs.downloadAssociatedFiles)) {
-				// Skip attachment due to prefs
-				continue;
-			}
-
-			attachment.parentKey = itemKey;
-
-			promises.push((async () => {
-				try {
-					switch (attachment.mimeType.toLowerCase()) {
-					case "application/pdf":
-						attachment.filename = baseName+".pdf";
-						break;
-					case "text/html":
-					case "application/xhtml+xml":
-						attachment.filename = baseName+".html";
-						attachment.data = await Zotero.SingleFile.retrievePageData();
-						break;
-					default:
-						attachment.filename = baseName;
-					}
-
-					// Don't download attachment if snapshot is specifically set to false
-					attachment.linkMode = attachment.snapshot === false ? "linked_url" : "imported_url";
-
-					await ItemSaver.fetchAttachmentSafari(attachment);
-					await Zotero.ItemSaver.saveAttachmentToServer(attachment);
-					attachmentCallback(attachment, 100);
-				}
-				catch (e) {
-					attachmentCallback(attachment, false, e);
-					Zotero.logError(e);
-				}
-			})());
-		}
-		await Promise.all(promises);
-	},
-	
 	_setAttachmentReferer(attachment) {
 		const url = new URL(document.location.href);
 
@@ -512,36 +377,6 @@ ItemSaver.prototype = {
 		} catch (e) {
 			attachment.referrer = url.origin;
 		}
-	},
-	
-	/**
-	 * Gets the base name for an attachment from an item object. This mimics the default behavior
-	 * of Zotero.Attachments.getFileBaseNameFromItem
-	 * @param {Object} item
-	 */
-	"_getFileBaseNameFromItem":function(item) {
-		var parts = [];
-		if(item.creators && item.creators.length) {
-			if(item.creators.length === 1) {
-				parts.push(item.creators[0].lastName);
-			} else if(item.creators.length === 2) {
-				parts.push(item.creators[0].lastName+" and "+item.creators[1].lastName);
-			} else {
-				parts.push(item.creators[0].lastName+" et al.");
-			}
-		}
-		
-		if(item.date) {
-			var date = Zotero.Date.strToDate(item.date);
-			if(date.year) parts.push(date.year);
-		}
-		
-		if(item.title) {
-			parts.push(item.title.substr(0, 50));
-		}
-		
-		if(parts.length) return parts.join(" - ").trim();
-		return "Attachment";
 	},
 };
 

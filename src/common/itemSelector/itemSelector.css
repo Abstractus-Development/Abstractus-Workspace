@@ -1,58 +1,244 @@
+/* Abstractus Connector — Select Items window */
+
+:root {
+	--is-font: Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+	--is-primary: #1a33b6;
+	--is-primary-hover: #142a94;
+	--is-primary-subtle: #eef1fd;
+	--is-on-primary: #ffffff;
+	--is-bg: #f0f2f6;
+	--is-surface: #ffffff;
+	--is-surface-subtle: #f0f2f6;
+	--is-surface-hover: #f5f7fb;
+	--is-button-hover: #e7ebf2;
+	--is-border: #d6dce7;
+	--is-border-subtle: #e8ecf2;
+	--is-border-strong: #b9c2d3;
+	--is-text: #0f172a;
+	--is-muted: #5b6475;
+	--is-heading: #0f2073;
+	--is-focus-ring: 0 0 0 3px rgba(26, 51, 182, 0.2);
+	--is-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+	--is-transition: 150ms ease;
+	color-scheme: dark;
+
+	/* Always-dark palette (Abstractus pages do not follow the OS theme) */
+	--is-primary: #5f78e8;
+	--is-primary-hover: #8699ef;
+	--is-primary-subtle: rgba(95, 120, 232, 0.14);
+	--is-bg: #111827;
+	--is-surface: #161e30;
+	--is-surface-subtle: #1e283e;
+	--is-surface-hover: #1b2438;
+	--is-button-hover: #26314a;
+	--is-border: #3a4761;
+	--is-border-subtle: #252f45;
+	--is-border-strong: #4b5a78;
+	--is-text: #e8ecf4;
+	--is-muted: #9aa5ba;
+	--is-heading: #e8ecf4;
+	--is-focus-ring: 0 0 0 3px rgba(95, 120, 232, 0.35);
+	--is-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+
+
+html {
+	background: var(--is-bg);
+}
+
 body {
-	font-family: Lucida Grande, Arial;
-	font-size: 11pt;
-	padding: 5px;
+	font-family: var(--is-font);
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--is-text);
+	background: var(--is-bg);
+	padding: 16px 16px 0;
 	margin: 0;
 	height: 100vh;
 	display: flex;
 	flex-direction: column;
 	box-sizing: border-box;
+	-webkit-font-smoothing: antialiased;
 }
 
 #label {
 	flex-shrink: 0;
-	margin-bottom: 2pt;
+	margin-bottom: 10px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--is-heading);
 }
 
 #item-selector {
 	flex: 1;
+	min-height: 0;
 	overflow: auto;
-	padding: 2pt 1.5pt;
-	border: 1pt solid black;
-	margin-bottom: 10pt;
+	padding: 4px;
+	background: var(--is-surface);
+	border: 1px solid var(--is-border);
+	border-radius: 12px;
+	box-shadow: var(--is-shadow);
+	scrollbar-width: thin;
+	scrollbar-color: var(--is-border-strong) transparent;
+}
+
+.item {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 7px 10px;
+	font-size: 13px;
+	min-height: 20px;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background-color var(--is-transition);
+}
+
+.item + .item {
+	margin-top: 1px;
+}
+
+.item:hover {
+	background-color: var(--is-surface-hover);
+}
+
+.item:has(input:checked) {
+	background-color: var(--is-primary-subtle);
+}
+
+#item-selector input[type="checkbox"] {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	margin: 1px 0 0;
+	accent-color: var(--is-primary);
+	cursor: pointer;
+}
+
+#item-selector input[type="checkbox"]:focus-visible {
+	outline: none;
+	box-shadow: var(--is-focus-ring);
+	border-radius: 4px;
+}
+
+.item span {
+	flex: 1;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	user-select: none;
+}
+
+.item.filtered-out {
+	color: var(--is-muted);
+	opacity: 0.75;
 }
 
 #buttons {
 	flex-shrink: 0;
+	position: sticky;
+	bottom: 0;
 	display: flex;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: center;
+	gap: 8px;
+	margin: 12px -16px 0;
+	padding: 12px 16px;
+	background: var(--is-surface);
+	border-top: 1px solid var(--is-border);
 }
 
-#item-selector input {
-	vertical-align: middle;
-	margin: 0 2.5pt 2pt 0;
-}
-
-.item {
-	font-size: 9pt;
-	white-space: nowrap;
-	min-height: 14pt;
-	cursor: default;
-}
-
-.item.filtered-out {
-	color: #999;
-}
-
-#select-deselect {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-}
-
+#select-deselect,
 #cancel-ok {
 	display: flex;
 	align-items: center;
-	gap: 5px;
+	gap: 8px;
+}
+
+#buttons input {
+	box-sizing: border-box;
+	height: 32px;
+	font: inherit;
+	color: var(--is-text);
+	border-radius: 8px;
+	transition: background-color var(--is-transition), border-color var(--is-transition), box-shadow var(--is-transition);
+}
+
+#pattern {
+	width: 160px;
+	padding: 0 10px;
+	background: var(--is-surface);
+	border: 1px solid var(--is-border);
+}
+
+#pattern::placeholder {
+	color: var(--is-muted);
+}
+
+#pattern:hover {
+	border-color: var(--is-border-strong);
+}
+
+#pattern:focus {
+	outline: none;
+	border-color: var(--is-primary);
+	box-shadow: var(--is-focus-ring);
+}
+
+#buttons input[type="submit"] {
+	appearance: none;
+	-webkit-appearance: none;
+	padding: 0 14px;
+	min-width: 72px;
+	font-weight: 600;
+	background: var(--is-surface-subtle);
+	border: 1px solid var(--is-border);
+	cursor: pointer;
+}
+
+#buttons input[type="submit"]:hover {
+	background: var(--is-button-hover);
+	border-color: var(--is-border-strong);
+}
+
+#buttons input[type="submit"]:focus {
+	outline: none;
+}
+
+#buttons input[type="submit"]:focus-visible {
+	box-shadow: 0 0 0 2px var(--is-surface), 0 0 0 4px var(--is-primary);
+}
+
+#buttons #ok {
+	min-width: 84px;
+	color: var(--is-on-primary);
+	background: var(--is-primary);
+	border-color: transparent;
+}
+
+#buttons #ok:hover {
+	background: var(--is-primary-hover);
+	border-color: transparent;
+}
+
+#buttons #select,
+#buttons #deselect {
+	background: transparent;
+	border-color: transparent;
+	color: var(--is-primary);
+	min-width: 0;
+	padding: 0 10px;
+}
+
+#buttons #select:hover,
+#buttons #deselect:hover {
+	background: var(--is-primary-subtle);
+	border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition-duration: 0ms !important;
+	}
 }

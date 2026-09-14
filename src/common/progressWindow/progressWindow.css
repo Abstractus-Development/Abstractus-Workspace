@@ -1,28 +1,136 @@
+/* ==========================================================================
+   Abstractus Connector — save popup
+   Rendered inside an iframe (351px wide) injected by progressWindow_inject.js.
+   The iframe height is rootNode.scrollHeight + 33px, so keep html/body
+   transparent and leave room for the card shadow.
+   ========================================================================== */
+
+:root {
+	--pw-font: Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+
+	--pw-primary: #1a33b6;
+	--pw-primary-hover: #142a94;
+	--pw-primary-subtle: #eef1fd;
+	--pw-primary-subtle-strong: #d9dffb;
+	--pw-on-primary: #ffffff;
+	--pw-accent: #ff731e;
+
+	--pw-surface: #ffffff;
+	--pw-surface-subtle: #f0f2f6;
+	--pw-surface-hover: #f4f6fb;
+	--pw-input-bg: #ffffff;
+	--pw-border: #d6dce7;
+	--pw-border-strong: #b9c2d3;
+	--pw-text: #0f172a;
+	--pw-muted: #5b6475;
+	--pw-heading: #0f2073;
+
+	--pw-track: #d9dffb;
+	--pw-success: #12b76a;
+	--pw-danger: #e5484d;
+	--pw-danger-text: #b42328;
+	--pw-danger-subtle: #fdeeee;
+	--pw-danger-border: #f6c9cb;
+
+	--pw-focus-ring: 0 0 0 3px rgba(26, 51, 182, 0.2);
+	--pw-shadow: 0 10px 30px -12px rgba(15, 32, 115, 0.35), 0 2px 6px rgba(15, 23, 42, 0.08);
+	--pw-shadow-popup: 0 12px 28px -10px rgba(15, 32, 115, 0.35), 0 2px 6px rgba(15, 23, 42, 0.1);
+	--pw-radius-card: 14px;
+	--pw-radius: 8px;
+	--pw-transition: 150ms ease;
+
+	--pw-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5' fill='none' stroke='%235b6475' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--pw-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.25' fill='none' stroke='%235b6475' stroke-width='1.5'/%3E%3Cpath d='m10.25 10.25 3.25 3.25' stroke='%235b6475' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+
+	/* Mask shapes (color comes from background-color) */
+	--pw-mask-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--pw-mask-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4.75 4.75 6.5 6.5m0-6.5-6.5 6.5' stroke='black' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E");
+	--pw-mask-x-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='black' fill-rule='evenodd' d='M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm-2.1 3.8a.75.75 0 0 0-1.06 1.06L6.94 8l-2.1 2.1a.75.75 0 1 0 1.06 1.06L8 9.06l2.1 2.1a.75.75 0 1 0 1.06-1.06L9.06 8l2.1-2.1a.75.75 0 0 0-1.06-1.06L8 6.94Z'/%3E%3C/svg%3E");
+	--pw-mask-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.25' fill='none' stroke='black' stroke-width='1.5'/%3E%3Cpath d='M8 4.75v3.75' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11' r='.95' fill='black'/%3E%3C/svg%3E");
+	--pw-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 8.25 2.6 2.6L12 5.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--pw-icon-bang: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 4v4.75' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11.75' r='1.15' fill='white'/%3E%3C/svg%3E");
+
+	/* Always-dark palette (Abstractus pages do not follow the OS theme) */
+	--pw-primary: #5f78e8;
+	--pw-primary-hover: #8699ef;
+	--pw-primary-subtle: rgba(95, 120, 232, 0.16);
+	--pw-primary-subtle-strong: rgba(95, 120, 232, 0.28);
+	--pw-on-primary: #ffffff;
+
+	--pw-surface: #161e30;
+	--pw-surface-subtle: #1e283e;
+	--pw-surface-hover: #1e283e;
+	--pw-input-bg: #1e283e;
+	--pw-border: #3a4761;
+	--pw-border-strong: #4b5a78;
+	--pw-text: #e8ecf4;
+	--pw-muted: #9aa5ba;
+	--pw-heading: #e8ecf4;
+
+	--pw-track: #33405c;
+	--pw-success: #32d583;
+	--pw-danger: #f06a6e;
+	--pw-danger-text: #ffa4a6;
+	--pw-danger-subtle: rgba(229, 72, 77, 0.13);
+	--pw-danger-border: rgba(229, 72, 77, 0.35);
+
+	--pw-focus-ring: 0 0 0 3px rgba(95, 120, 232, 0.35);
+	--pw-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.35);
+	--pw-shadow-popup: 0 12px 28px -10px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.4);
+
+	--pw-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6.25 8 9.75l3.5-3.5' fill='none' stroke='%239aa5ba' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--pw-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.25' fill='none' stroke='%239aa5ba' stroke-width='1.5'/%3E%3Cpath d='m10.25 10.25 3.25 3.25' stroke='%239aa5ba' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Always-dark: rules formerly limited to dark mode */
+/* Per-control color-scheme (not on :root, which would make the iframe canvas opaque) */
+.ProgressWindow-box input,
+.ProgressWindow-box select,
+.ProgressWindow-box textarea,
+.ProgressWindow-targetSelector {
+	color-scheme: dark;
+}
+
+
+html,
 body {
-	/* Match tree.css */
-	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+	background: transparent;
 }
 
-button {
-	border: 1px solid darkgray;
+body {
+	margin: 0;
+	font-family: var(--pw-font);
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--pw-text);
+	-webkit-font-smoothing: antialiased;
 }
 
-button:active {
-	background-color: #d5d5d5;
+button,
+input,
+select,
+textarea {
+	font-family: inherit;
+	color: inherit;
 }
+
+/* --------------------------------------------------------------------------
+   Card
+   -------------------------------------------------------------------------- */
 
 .ProgressWindow-box {
-	width: 300px;
-	max-width: 92%;
-	border-color: #adadad #9a9a9a #ababab;
-	border-width: 1px;
-	border-style: solid;
-	background-color: #ededed;
-	box-shadow: rgba(0, 0, 0, 0.25) 0px 5px 20px -2px;
-	margin-left: 4px;
-	padding: 6px 10px 6px;
+	box-sizing: border-box;
+	width: 327px;
+	max-width: calc(100% - 20px);
+	margin: 6px 12px 0;
+	padding: 10px 12px 12px;
 	min-height: 40px;
 	overflow: hidden;
+	background-color: var(--pw-surface);
+	color: var(--pw-text);
+	border: 1px solid var(--pw-border);
+	border-radius: var(--pw-radius-card);
+	box-shadow: var(--pw-shadow);
 }
 
 /* Hack to check whether the mouse is over the pane when switching back from another tab.
@@ -31,128 +139,320 @@ button:active {
 	background-size: cover;
 }
 
+/* --------------------------------------------------------------------------
+   Header
+   -------------------------------------------------------------------------- */
+
 .ProgressWindow-headline {
-	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-	font-size: 13px;
-	font-weight: bold;
-	margin-top: 2px;
-	margin-bottom: 7px;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 	display: flex;
 	align-items: center;
-	user-select: none
+	gap: 8px;
+	min-height: 30px;
+	font-size: 13px;
+	font-weight: 600;
+	white-space: nowrap;
+	user-select: none;
+}
+
+.ProgressWindow-brandLogo {
+	flex: none;
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
+	object-fit: contain;
+}
+
+.ProgressWindow-headlineText {
+	flex: none;
+	color: var(--pw-heading);
+	letter-spacing: -0.005em;
+}
+
+.ProgressWindow-headlineText:empty {
+	display: none;
 }
 
 .ProgressWindow-headlineSelect {
-	margin-left: 5px;
-	height: 22px;
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	flex: 1 1 auto;
+	min-width: 0;
 	width: 100%;
+	height: 30px;
+	margin: 0;
+	padding: 0 28px 0 12px;
 	font-size: 13px;
-	flex-grow: 1;
+	font-weight: 500;
+	color: var(--pw-text);
+	background: var(--pw-surface-subtle) var(--pw-chevron) no-repeat right 8px center / 16px 16px;
+	border: 1px solid var(--pw-border);
+	border-radius: 999px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: border-color var(--pw-transition), box-shadow var(--pw-transition), background-color var(--pw-transition);
+}
+
+.ProgressWindow-headlineSelect:hover {
+	border-color: var(--pw-border-strong);
+}
+
+.ProgressWindow-headlineSelect:focus {
+	outline: none;
+}
+
+.ProgressWindow-headlineSelect:focus-visible,
+.ProgressWindow-headlineSelect:focus {
+	border-color: var(--pw-primary);
+	box-shadow: var(--pw-focus-ring);
+}
+
+.ProgressWindow-headlineSelect option {
+	background-color: var(--pw-surface);
+	color: var(--pw-text);
+	font-weight: 400;
+}
+
+.ProgressWindow-headlineTarget {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	color: var(--pw-text);
+}
+
+.ProgressWindow-headlineTargetName {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
 .ProgressWindow-targetIcon {
+	flex: none;
 	display: inline-block;
 	width: 16px;
 	height: 16px;
-	background-position: center;
-	background-repeat: no-repeat;
-	margin-left: 4px;
-	margin-right: 3px;
-	vertical-align: -3px;
+	color: var(--pw-primary);
 }
 
 .ProgressWindow-disclosure {
-	border-radius: 3px;
-	margin-left: 6px;
-	background: url('disclosure-closed.svg') no-repeat center/40% transparent;
-	width: 26px;
-	font-size: 20px;
-	height: 20px;
-	line-height: 17px;
-	cursor: default;
-	user-select: none
+	position: relative;
+	flex: none;
+	width: 30px;
+	height: 30px;
+	margin: 0;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: var(--pw-radius);
+	background: transparent;
+	color: var(--pw-muted);
+	cursor: pointer;
+	user-select: none;
+	transition: background-color var(--pw-transition), color var(--pw-transition), box-shadow var(--pw-transition);
+}
+
+.ProgressWindow-disclosure::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	width: 16px;
+	height: 16px;
+	background-color: currentColor;
+	-webkit-mask: var(--pw-mask-chevron) no-repeat center / contain;
+	mask: var(--pw-mask-chevron) no-repeat center / contain;
+	transition: transform var(--pw-transition);
+}
+
+.ProgressWindow-disclosure:hover {
+	background-color: var(--pw-surface-subtle);
+	color: var(--pw-text);
+}
+
+.ProgressWindow-disclosure:focus {
+	outline: none;
+}
+
+.ProgressWindow-disclosure:focus-visible {
+	border-color: var(--pw-primary);
+	box-shadow: var(--pw-focus-ring);
 }
 
 .ProgressWindow-disclosure.is-open {
-	background-image: url('disclosure-open.svg');
+	background-color: var(--pw-primary-subtle);
+	color: var(--pw-primary);
+}
+
+.ProgressWindow-disclosure.is-open::before {
+	transform: rotate(180deg);
+}
+
+/* --------------------------------------------------------------------------
+   Target selector: filter, tree, note, tags
+   -------------------------------------------------------------------------- */
+
+.ProgressWindow-filterWrapper {
+	display: flex;
+	align-items: center;
+	margin-top: 10px;
+	margin-bottom: 8px;
+}
+
+.ProgressWindow-filterInput,
+.ProgressWindow-tagsInput,
+.ProgressWindow-noteEditor {
+	box-sizing: border-box;
+	font-size: 13px;
+	color: var(--pw-text);
+	background-color: var(--pw-input-bg);
+	border: 1px solid var(--pw-border);
+	border-radius: var(--pw-radius);
+	transition: border-color var(--pw-transition), box-shadow var(--pw-transition);
+}
+
+.ProgressWindow-filterInput::placeholder,
+.ProgressWindow-tagsInput::placeholder,
+.ProgressWindow-noteEditor::placeholder {
+	color: var(--pw-muted);
+	opacity: 0.85;
+}
+
+.ProgressWindow-filterInput:hover,
+.ProgressWindow-tagsInput:hover,
+.ProgressWindow-noteEditor:hover {
+	border-color: var(--pw-border-strong);
+}
+
+.ProgressWindow-filterInput:focus,
+.ProgressWindow-tagsInput:focus,
+.ProgressWindow-noteEditor:focus {
+	outline: none;
+	border-color: var(--pw-primary);
+	box-shadow: var(--pw-focus-ring);
+}
+
+.ProgressWindow-filterInput {
+	width: 100%;
+	height: 32px;
+	padding: 0 30px 0 30px;
+	background: var(--pw-input-bg) var(--pw-search) no-repeat 9px center / 15px 15px;
+}
+
+.ProgressWindow-cross {
+	flex: none;
+	width: 20px;
+	height: 20px;
+	margin: 0 0 0 -26px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background-color: var(--pw-muted);
+	-webkit-mask: var(--pw-mask-x-circle) no-repeat center / 15px 15px;
+	mask: var(--pw-mask-x-circle) no-repeat center / 15px 15px;
+	cursor: pointer;
+	opacity: 0.8;
+}
+
+.ProgressWindow-cross:hover {
+	opacity: 1;
+	background-color: var(--pw-text);
+}
+
+.ProgressWindow-cross.hidden {
+	display: none;
+}
+
+.ProgressWindow-targetSelector {
+	box-sizing: border-box;
+	height: 220px;
+	overflow-y: auto;
+	padding: 4px;
+	background: var(--pw-surface);
+	border: 1px solid var(--pw-border);
+	border-radius: 10px;
+	scrollbar-width: thin;
+	scrollbar-color: var(--pw-border-strong) transparent;
+}
+
+.ProgressWindow-targetSelector::-webkit-scrollbar {
+	width: 8px;
+}
+
+.ProgressWindow-targetSelector::-webkit-scrollbar-thumb {
+	background-color: var(--pw-border-strong);
+	border-radius: 8px;
+	border: 2px solid var(--pw-surface);
+}
+
+.ProgressWindow-targetSelector .context-row .tree-item-label {
+	opacity: 0.55;
+}
+
+.ProgressWindow-noteEditorRow {
+	display: flex;
+	margin-top: 8px;
+}
+
+.ProgressWindow-noteEditor {
+	box-sizing: content-box;
+	flex: 1 1 auto;
+	width: 0;
+	min-width: 0;
+	height: 20px; /* initial height that may increase as user types */
+	max-height: 6em; /* expand up to 5 lines of text */
+	padding: 7px 10px;
+	resize: none;
+	font-family: inherit;
+	line-height: 1.5;
 }
 
 .ProgressWindow-targetSelectorTagsRow {
 	display: flex;
 	flex-direction: column;
+	margin-top: 8px;
 }
 
 .ProgressWindow-targetSelectorTagsRow.hasTags {
-	margin-top: 6px;
-}
-
-.ProgressWindow-autocomplete {
-	position: absolute;
-	background-color: white;
-	border: 1px solid lightgray;
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-	z-index: 1000;
-	max-height: 100px;
-	overflow-y: auto;
-	width: 215px;
-	margin-top: 25px;
-}
-
-.ProgressWindow-autocompleteOption {
-	font-size: 12px;
-	height: 20px;
-	cursor: default;
-	user-select: none;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: flex;
-	align-items: center;
-	padding-inline-start: 5px;
-}
-.ProgressWindow-autocompleteOption.active {
-	background-color: var(--theme-selection-background, #0a84ff);
-	color: white;
-}
-
-.ProgressWindow-inputRow {
-	display: flex;
+	margin-top: 10px;
 }
 
 .ProgressWindow-tagsRow {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-	margin-bottom: 6px;
 	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 6px;
 	max-height: 200px;
 	overflow-y: auto;
-	padding: 1px; /* Ensures the focus ring is visible on selected tags */
+	padding: 2px; /* Ensures the focus ring is visible on selected tags */
 }
+
+.ProgressWindow-targetSelectorTagsRow.hasTags .ProgressWindow-tagsRow {
+	margin-bottom: 6px;
+}
+
 .ProgressWindow-tagsRow:focus-visible {
 	outline: none;
 }
 
 .ProgressWindow-selectedTag {
 	display: flex;
- 	align-items: center;
-	background-color: #0000000d; /* hardcoded fill-quinary from light theme */
-	border-radius: 5px;
+	align-items: center;
+	gap: 2px;
+	height: 24px;
+	box-sizing: border-box;
+	padding: 0 3px 0 9px;
 	font-size: 12px;
-	padding: 2px 3px 2px 4px;
+	font-weight: 500;
 	white-space: nowrap;
-}
-/* show outline on the X button when a tag is active, since Space on it will remove the tag */
-.ProgressWindow-tagsRow:focus-visible .ProgressWindow-selectedTag.active .ProgressWindow-removeTag {
-	outline: 1px solid #0a84ff;
+	color: var(--pw-primary);
+	background-color: var(--pw-primary-subtle);
+	border: 1px solid var(--pw-primary-subtle-strong);
+	border-radius: 999px;
 }
 
 .ProgressWindow-tagLabel {
-	max-width: 100px;
+	max-width: 110px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -160,131 +460,304 @@ button:active {
 }
 
 .ProgressWindow-removeTag {
-	width: 12px;
-	height: 12px;
-	background: url('x-6.svg') no-repeat center;
-	border-radius: 5px;
-	margin-left: 2px;
-}
-.ProgressWindow-removeTag:hover {
-	background-color: #d5d5d5;
+	flex: none;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background-color: currentColor;
+	-webkit-mask: var(--pw-mask-x) no-repeat center / 12px 12px;
+	mask: var(--pw-mask-x) no-repeat center / 12px 12px;
+	opacity: 0.7;
 	cursor: pointer;
+	transition: opacity var(--pw-transition);
+}
+
+.ProgressWindow-removeTag:hover {
+	opacity: 1;
+}
+
+/* show a ring on the active tag, since Space on it will remove the tag */
+.ProgressWindow-tagsRow:focus-visible .ProgressWindow-selectedTag.active {
+	border-color: var(--pw-primary);
+	box-shadow: var(--pw-focus-ring);
+}
+
+.ProgressWindow-inputRow {
+	position: relative;
+	display: flex;
+	gap: 8px;
 }
 
 .ProgressWindow-tagsInput {
 	flex-grow: 1;
-	margin-right: 8px;
-	padding-left: 5px;
-	padding-right: 5px;
-	font-size: 13px;
+	height: 32px;
+	padding: 0 10px;
 	/* Ensures the input can shrink to make space for the done btn if the user zooms into the iframe */
-	min-width: 0; 
-}
-
-.ProgressWindow-noteEditor {
-	width: 100%;
-	resize: none;
-	max-height: 6em; /* expand up to 5 lines of text */
-	height: 34px; /* initial height that may increase as user types */
-	font-family: inherit;
-	font-size: 12px;
-}
-
-.ProgressWindow-noteEditorRow {
-	margin-top: 6px;
-	display: flex;
+	min-width: 0;
 }
 
 .ProgressWindow-button {
-	background-color: white;
-	width: 75px;
-	border-radius: 4px;
+	flex: none;
+	min-width: 72px;
+	height: 32px;
+	margin: 0;
+	padding: 0 14px;
 	font-size: 13px;
+	font-weight: 600;
+	color: var(--pw-on-primary);
+	background-color: var(--pw-primary);
+	border: 1px solid transparent;
+	border-radius: var(--pw-radius);
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+	cursor: pointer;
+	transition: background-color var(--pw-transition), box-shadow var(--pw-transition), transform var(--pw-transition);
 }
 
-.ProgressWindow-filterWrapper {
-	display: flex;
-	margin-bottom: 6px;
+.ProgressWindow-button:hover {
+	background-color: var(--pw-primary-hover);
 }
-.ProgressWindow-filterInput {
-	width: 100%;
+
+.ProgressWindow-button:active {
+	transform: translateY(0.5px);
+}
+
+.ProgressWindow-button:focus {
+	outline: none;
+}
+
+.ProgressWindow-button:focus-visible {
+	box-shadow: 0 0 0 2px var(--pw-surface), 0 0 0 4px var(--pw-primary);
+}
+
+.ProgressWindow-autocomplete {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 0;
+	right: 0;
+	z-index: 1000;
 	box-sizing: border-box;
-	padding: 2px 20px 2px 6px;
-	font-size: 13px;
-}
-.ProgressWindow-cross {
-	width: 16px;
-	height: 16px;
-	background: url('searchfield-cancel.svg') no-repeat center;
-	margin-left: -20px;
-	align-self: center;
-	border: none;
-}
-.ProgressWindow-cross.hidden {
-	display: none;
+	max-height: 220px;
+	min-height: 40px;
+	overflow-y: auto;
+	padding: 4px;
+	background-color: var(--pw-surface);
+	border: 1px solid var(--pw-border);
+	border-radius: 10px;
+	box-shadow: var(--pw-shadow-popup);
+	scrollbar-width: thin;
 }
 
-.ProgressWindow-targetSelector {
-	height: 218px;
-	overflow-y: scroll;
-	background: white;
-	border: 1px solid lightgray;
-	padding-bottom: 2px
+.ProgressWindow-autocompleteOption {
+	display: flex;
+	align-items: center;
+	min-height: 36px;
+	box-sizing: border-box;
+	padding: 7px 12px;
+	font-size: 14px;
+	white-space: normal;
+	line-height: 1.4;
+	border-radius: 6px;
+	cursor: default;
+	user-select: none;
+	white-space: normal;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.ProgressWindow-targetSelector .context-row .tree-item-label {
-	opacity: 0.6;
+.ProgressWindow-autocompleteOption:hover {
+	background-color: var(--pw-surface-hover);
 }
+
+.ProgressWindow-autocompleteOption.active {
+	background-color: var(--pw-primary);
+	color: var(--pw-on-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Item progress rows
+   -------------------------------------------------------------------------- */
 
 .ProgressWindow-progressBox {
 	margin-top: 10px;
-	margin-bottom: 4px;
-	margin-left: 2px;
+	padding-top: 8px;
+	border-top: 1px solid var(--pw-surface-subtle);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.ProgressWindow-progressBox:empty {
+	display: none;
 }
 
 .ProgressWindow-item {
-	margin-top: 8px;
-	margin-bottom: 4px;
-	min-height: 16px;
+	position: relative;
 	display: flex;
 	align-items: center;
+	gap: 10px;
+	min-height: 20px;
+	padding: 6px 6px;
+	border-radius: var(--pw-radius);
+	color: var(--pw-text);
+	transition: background-color var(--pw-transition), color var(--pw-transition);
 }
 
 .ProgressWindow-itemIcon {
-	position: absolute;
+	flex: none;
 	width: 16px;
 	height: 16px;
 	background-size: contain;
-	background-position: 0;
-	background-repeat: no-repeat
+	background-position: center;
+	background-repeat: no-repeat;
 }
 
 .ProgressWindow-itemText {
-	flex: 1;
-	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+	flex: 1 1 auto;
+	min-width: 0;
 	font-size: 13px;
-	margin: 0 0 0 22px;
+	font-weight: 500;
 	white-space: nowrap;
-	overflow-x: hidden;
-	text-overflow: ellipsis
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ProgressWindow-item.is-pending .ProgressWindow-itemText,
+.ProgressWindow-item.is-progress .ProgressWindow-itemText {
+	color: var(--pw-muted);
+}
+
+.ProgressWindow-item--child {
+	margin-left: 18px;
+	padding-top: 4px;
+	padding-bottom: 4px;
+}
+
+.ProgressWindow-item--child::before {
+	content: "";
+	position: absolute;
+	left: -10px;
+	top: -2px;
+	bottom: 50%;
+	width: 8px;
+	border-left: 1.5px solid var(--pw-border);
+	border-bottom: 1.5px solid var(--pw-border);
+	border-bottom-left-radius: 6px;
+}
+
+.ProgressWindow-item--child .ProgressWindow-itemText {
+	font-size: 12.5px;
+	font-weight: 400;
+}
+
+.ProgressWindow-item.is-failed {
+	background-color: var(--pw-danger-subtle);
+}
+
+.ProgressWindow-item.is-failed .ProgressWindow-itemText {
+	color: var(--pw-danger-text);
+}
+
+/* Right-side status indicator */
+.ProgressWindow-itemStatus {
+	flex: none;
+	box-sizing: border-box;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: 12px 12px;
+}
+
+/* Waiting / indeterminate: spinner */
+.is-pending .ProgressWindow-itemStatus {
+	border: 2px solid var(--pw-track);
+	border-top-color: var(--pw-primary);
+	animation: pw-spin 0.8s linear infinite;
+}
+
+/* Determinate progress ring driven by --p (0-100) */
+.is-progress .ProgressWindow-itemStatus {
+	background: conic-gradient(var(--pw-primary) calc(var(--p, 0) * 1%), var(--pw-track) 0);
+	-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+	mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+}
+
+.is-done .ProgressWindow-itemStatus {
+	background-color: var(--pw-success);
+	background-image: var(--pw-icon-check);
+	animation: pw-pop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+.is-failed .ProgressWindow-itemStatus {
+	background-color: var(--pw-danger);
+	background-image: var(--pw-icon-bang);
+	animation: pw-pop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+@keyframes pw-spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes pw-pop {
+	from { transform: scale(0.4); opacity: 0; }
+	to { transform: scale(1); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   Errors
+   -------------------------------------------------------------------------- */
+
+.ProgressWindow-errors:empty {
+	display: none;
 }
 
 .ProgressWindow-error {
-	font-size: 13px;
-	line-height: 1.4em;
-	margin-bottom: 4px;
+	position: relative;
+	margin-top: 8px;
+	padding: 8px 10px 8px 32px;
+	font-size: 12.5px;
+	line-height: 1.45;
+	color: var(--pw-danger-text);
+	background-color: var(--pw-danger-subtle);
+	border: 1px solid var(--pw-danger-border);
+	border-radius: var(--pw-radius);
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
+.ProgressWindow-error::before {
+	content: "";
+	position: absolute;
+	left: 10px;
+	top: 9px;
+	width: 16px;
+	height: 16px;
+	background-color: currentColor;
+	-webkit-mask: var(--pw-mask-alert) no-repeat center / contain;
+	mask: var(--pw-mask-alert) no-repeat center / contain;
+}
 
-/* ---------------------- tree.css -------------------------- */
+.ProgressWindow-error b {
+	font-weight: 600;
+}
 
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+.ProgressWindow-error a {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   tree.css (adapted)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+   -------------------------------------------------------------------------- */
 
 .tree {
 	overflow: hidden;
-	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+	font-family: var(--pw-font);
 	font-size: 13px;
 	white-space: nowrap;
 	outline: none;
@@ -295,18 +768,34 @@ button:active {
 	display: block;
 }
 
+/* Row height must match TargetTree's itemHeight (28px) in ProgressWindow.jsx */
 .tree .tree-node {
 	display: flex;
-	padding-top: 2px;
-	padding-left: 7px;
-	padding-bottom: 2px;
+	align-items: center;
+	box-sizing: border-box;
+	height: 28px;
+	padding: 0 8px 0 4px;
+	border-radius: 7px;
+	color: var(--pw-text);
+	transition: background-color var(--pw-transition);
+}
+
+.tree .tree-row {
+	display: flex;
+	align-items: center;
+	flex: 1 1 auto;
+	min-width: 0;
+	gap: 6px;
+}
+
+.tree .tree-row > span:first-child:empty {
+	display: none;
 }
 
 .tree-indent {
 	display: inline-block;
 	width: 12px;
-	margin-left: 5px;
-	/*border-left: 1px solid #A2D1FF;*/
+	margin-left: 4px;
 	flex-shrink: 0;
 }
 
@@ -316,13 +805,13 @@ button:active {
 
 /* Align with expandables siblings (where we have the arrow) */
 .tree-node[data-expandable="false"] .tree-indent:last-of-type {
-	margin-right: 15px;
+	margin-right: 16px;
 }
 
 /* For non expandable root nodes, we don't have .tree-indent elements, so we declare
    the margin on the start of the node */
 .tree-node[data-expandable="false"][aria-level="0"] {
-	padding-left: 22px
+	padding-left: 20px;
 }
 
 .tree .tree-node[data-expandable="true"] {
@@ -330,34 +819,45 @@ button:active {
 }
 
 .tree .tree-node:not(.focused):hover {
-	background-color: #F0F9FE;
+	background-color: var(--pw-surface-hover);
 }
 
 .tree .tree-node.focused {
-	color: white;
-	background-color: var(--theme-selection-background, #0a84ff);
+	color: var(--pw-on-primary);
+	background-color: var(--pw-primary);
+}
+
+.tree .tree-node.focused .ProgressWindow-targetIcon {
+	color: inherit;
+}
+
+.tree:focus-visible .tree-node.focused {
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 12px;
+	height: 16px;
+	margin-right: -2px;
+}
+
+.arrow svg {
+	fill: var(--pw-muted);
+	width: 8px;
+	height: 8px;
+	transition: transform var(--pw-transition);
+	transform: rotate(-90deg);
 }
 
 .tree-node.focused .arrow svg {
 	fill: currentColor;
 }
 
-.arrow {
-}
-
-.arrow svg {
-	fill: var(--theme-splitter-color, #9B9B9B);
-	transition: transform 0.125s ease;
-	width: 10px;
-	margin-right: 5px;
-	transform: rotate(-90deg);
-	vertical-align: middle;
-	margin-top: -3px;
-}
-
 html[dir="rtl"] .arrow svg,
-.arrow svg:dir(rtl),
-.arrow svg:-moz-locale-dir(rtl) {
+.arrow svg:dir(rtl) {
 	transform: rotate(90deg);
 }
 
@@ -369,6 +869,25 @@ html[dir="rtl"] .arrow svg,
 	overflow-x: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	margin-left: 4px;
 }
 
+/* --------------------------------------------------------------------------
+   Motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0ms !important;
+	}
+
+	.is-done .ProgressWindow-itemStatus,
+	.is-failed .ProgressWindow-itemStatus {
+		animation: none;
+	}
+
+	.is-pending .ProgressWindow-itemStatus {
+		animation-duration: 2s;
+	}
+}

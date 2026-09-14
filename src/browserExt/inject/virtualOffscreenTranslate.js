@@ -120,23 +120,25 @@ Zotero.VirtualOffscreenTranslate = class {
 			// SecurityError in sandboxed frames lacking 'allow-same-origin'
 		}
 
-		let html = doc.documentElement.outerHTML;
-		let head = doc.head;
-		if (head && [...head.childNodes].some(isInvalidHeadChild)) {
-			head = head.cloneNode(true);
+		// Build in an inert document, never in the publisher's live DOM. A raw copy of
+		// publisher CSS triggers CSP violations when DOMParser reads it in our strict
+		// sandbox. Translators need the markup and embedded data, not its styling.
+		const snapshot = doc.implementation.createHTMLDocument('')
+			.importNode(doc.documentElement, true);
+		const removePresentation = root => {
+			root.removeAttribute?.('style');
+			for (const style of root.querySelectorAll('style')) style.remove();
+			for (const element of root.querySelectorAll('[style]')) element.removeAttribute('style');
+			for (const template of root.querySelectorAll('template')) removePresentation(template.content);
+		};
+		removePresentation(snapshot);
+		const head = snapshot.querySelector('head');
+		if (head) {
 			for (const node of [...head.childNodes]) {
 				if (isInvalidHeadChild(node)) node.remove();
 			}
-
-			// A shallow document-element clone serializes as just its opening and closing tags.
-			// Insert the sanitized head and original body between them without cloning the body.
-			let rootHTML = doc.documentElement.cloneNode(false).outerHTML;
-			let closingTag = `</${doc.documentElement.localName}>`;
-			html = rootHTML.slice(0, -closingTag.length)
-				+ head.outerHTML
-				+ doc.body.outerHTML
-				+ closingTag;
 		}
+		const html = snapshot.outerHTML;
 		return this.sendMessage('Translate.setDocument', [html, doc.location.href, cookie]);
 	}
 	

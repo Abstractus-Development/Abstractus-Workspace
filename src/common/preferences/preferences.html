@@ -1,144 +1,153 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     ***** BEGIN LICENSE BLOCK *****
-    
+
     Copyright © 2011 Center for History and New Media
                      George Mason University, Fairfax, Virginia, USA
                      http://zotero.org
-    
+
     This file is part of Zotero.
-    
+
     Zotero is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-    
+
     ***** END LICENSE BLOCK *****
 -->
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 	<head>
 		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<link rel="stylesheet" type="text/css" media="screen" href="preferences.css" />
-		<title data-l10n-id="preferences_title" data-l10n-client-name>Zotero Connector Preferences</title>
+		<title data-l10n-id="preferences_title" data-l10n-client-name>Abstractus Connector Preferences</title>
 	</head>
 	<body>
-		<div id="panes">
-			<div id="pane-general" class="pane">
-				<div class="pane-image"><img src="../images/prefs-general.png" alt=""/></div>
-				<a href="#general" class="pane-label" data-l10n-id="preferences_general">General</a>
-			</div>
-			<div id="pane-proxies" class="pane" style="display: none">
-				<div class="pane-image"><img src="../images/prefs-proxies.png" alt=""/></div>
-				<a href="#proxies" class="pane-label" data-l10n-id="preferences_proxies">Proxies</a>
-			</div>
-			<div id="pane-advanced" class="pane">
-				<div class="pane-image"><img src="../images/prefs-advanced.png" alt=""/></div>
-				<a href="#advanced" class="pane-label" data-l10n-id="preferences_advanced">Advanced</a>
-			</div>
-		</div>
-		<div id="content-general" class="content">
-			<div class="group">
-				<div class="group-title" data-l10n-id="preferences_zoteroStatus" data-l10n-client-name>Zotero Status</div>
-				<div class="group-content" id="client-status"></div>
-			</div>
-			<div class="group">
-				<div class="group-title" data-l10n-id="preferences_saveToOnlineLibrary">Save to Zotero.org</div>
-				<div class="group-content">
-					<div id="general-authorization-not-authorized">
-						<p data-l10n-id="preferences_onlineLibrary_notAuthorized" data-l10n-client-name>Zotero Connector is not currently authorized to save items to zotero.org. You will be prompted for authorization if you try to save items while Zotero is not open.</p>
-					</div>
-					<div id="general-authorization-authorized" style="display:none">
-						<p id="general-authorization-authorized-message"></p>
-						<p>
-							<input type="button" value="Clear Credentials" id="general-button-clear-credentials" data-l10n-id="preferences_onlineLibrary_clearCredentials"/>
-						</p>
-						<p>
-							<label><input type="checkbox" data-pref="automaticSnapshots"/>&nbsp;<span data-l10n-id="preferences_onlineLibrary_automaticSnapshots">Automatically take snapshots when saving items</span></label>
-							<label><input type="checkbox" data-pref="downloadAssociatedFiles"/>&nbsp;<span data-l10n-id="preferences_onlineLibrary_downloadAssociatedFiles">Automatically download associated PDFs and other files when saving items</span></label>
-							<label><input type="checkbox" data-pref="automaticTags"/>&nbsp;<span data-l10n-id="preferences_onlineLibrary_automaticTags">Automatically tag items with keywords and subject headings</span></label>
-						</p>
+		<div class="layout">
+			<aside class="sidebar">
+				<div class="brand">
+					<img class="brand-logo" src="../images/abstractus-logo.png" alt=""/>
+					<div class="brand-text">
+						<div class="brand-name">Abstractus</div>
+						<div class="brand-sub">Connector <span id="connector-version"></span></div>
 					</div>
 				</div>
-			</div>
-			<div class="group" style="display: none" id="intercept-and-import">
-				<div class="group-title" data-l10n-id="preferences_fileImporting">Automatic File Importing</div>
-				<!-- React Component -->
-				<div class="group-content"></div>
-			</div>
-		</div>
-		<!-- React Component -->
-		<div id="content-proxies" class="content"></div>
-		<div id="content-advanced" class="content">
-			<div class="group">
-				<div class="group-title" data-l10n-id="preferences_reportErrors">Report Errors</div>
-				<div class="group-content">
-					<div id="advanced-no-errors">
-						<span data-l10n-id="preferences_reportErrors_none">No errors have been logged.</span>
-					</div>
-					<div id="advanced-have-errors" style="display:none">
-						<p data-l10n-id="preferences_reportErrors_subtitle" data-l10n-client-name>The following errors have occurred since the Zotero Connector was started:</p>
-						<p><textarea id="advanced-textarea-errors" style="width:100%; height:10em;" readonly="true"></textarea></p>
-					</div>
-					<p><input type="button" id="advanced-button-report-errors" value="Submit Report" data-l10n-id="preferences_reportErrors_submit"/></p>
-				</div>
-			</div>
-			<div class="group">
-				<div class="group-title" data-l10n-id="preferences_debugOutput">Debug Output Logging</div>
-				<div class="group-content">
-					<p data-l10n-id="preferences_debugOutput_description" data-l10n-client-name>Debug output can help Zotero developers diagnose problems. Debug logging may slow down your browser, so you should generally leave it disabled unless a Zotero developer requests debug output.</p>
-					<p>
-						<label><input type="checkbox" id="advanced-checkbox-enable-logging"/>&nbsp;<span data-l10n-id="preferences_debugOutput_enable">Enable Logging</span></label>
-						<label><input type="checkbox" id="advanced-checkbox-enable-at-startup"/>&nbsp;<span data-l10n-id="preferences_debugOutput_enableAtStartup">Enable at Startup</span></label>
-					</p>
-					<p>
-						<span id="advanced-span-lines-logged">0 lines logged</span>
-					</p>
-					<p>
-						<input type="button" id="advanced-button-view-output" value="View Output" data-l10n-id="preferences_debugOutput_view"/>
-						<input type="button" id="advanced-button-clear-output" value="Clear Output" data-l10n-id="preferences_debugOutput_clear"/>
-						<input type="button" id="advanced-button-submit-output" value="Submit Output" data-l10n-id="preferences_debugOutput_submit"/>
-					</p>
-					<p><textarea id="advanced-textarea-debug" style="width:100%; height:10em; display:none" readonly="true"></textarea></p>
-				</div>
-			</div>
-			<div class="group">
-				<div class="group-title" data-l10n-id="preferences_translators">Translators</div>
-				<div class="group-content">
-					<label><input type="checkbox" id="advanced-checkbox-report-translator-failure"/> <span data-l10n-id="preferences_translators_reportErrors">Report broken site translators to zotero.org</span></label>
-					<p>
-						<input type="button" id="advanced-button-reset-translators" value="Reset Translators" data-l10n-id="preferences_translators_reset"/>
-						<!--BEGIN DEBUG-->
-						<input type="button" id="advanced-button-open-translator-tester" value="Open Translator Tester"/>
-						<!--END DEBUG-->
-					</p>
-				</div>
-			</div>
-			<div class="group" id="advanced-group-google-docs">
-				<div class="group-title" data-l10n-id="preferences_googleDocs">Google Docs Integration</div>
-				<div class="group-content">
-					<div id="google-docs-pref">
-						<p>
-							<label><input id="advanced-checkbox-google-docs-enabled" type="checkbox" data-pref="integration.googleDocs.enabled"/><span data-l10n-id="preferences_googleDocs_enable">Enable Google Docs Integration</span></label>
-						</p>
-						<div id="advanced-google-docs-subprefs" style="margin-left: 1em">
-<!--							<label style="margin-top: -7px; margin-bottom: 5px"><input type="checkbox" data-pref="integration.googleDocs.useGoogleDocsAPI"/>Enable Google Docs Integration v2 (NEW)</label>-->
-							<label><span data-l10n-id="preferences_googleDocs_shortcut">Add/Edit Citation Shortcut</span><input is="shortcut-input" type="text" class="shortcut-input" data-pref="shortcuts.cite"></label>
+				<nav id="panes" aria-label="Preferences sections">
+					<a href="#general" id="pane-general" class="pane">
+						<svg class="pane-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="17" cy="7" r="2.5"/><circle cx="14" cy="17" r="2.5"/></svg>
+						<span class="pane-label" data-l10n-id="preferences_general">General</span>
+					</a>
+					<a href="#proxies" id="pane-proxies" class="pane" style="display: none">
+						<svg class="pane-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.4 3.6 5.2 3.6 8.5s-1.1 6.1-3.6 8.5c-2.5-2.4-3.6-5.2-3.6-8.5S9.5 5.9 12 3.5z"/></svg>
+						<span class="pane-label" data-l10n-id="preferences_proxies">Proxies</span>
+					</a>
+					<a href="#advanced" id="pane-advanced" class="pane">
+						<svg class="pane-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13.5 6l-3 12"/></svg>
+						<span class="pane-label">Help &amp; diagnostics</span>
+					</a>
+				</nav>
+			</aside>
+
+			<main class="main">
+				<section id="content-general" class="content">
+					<header class="content-header">
+						<h1 data-l10n-id="preferences_general">General</h1>
+					</header>
+					<div class="card">
+						<div class="card-title" data-l10n-id="preferences_zoteroStatus" data-l10n-client-name>Abstractus Desktop</div>
+						<div class="card-body" id="client-status"></div>
+						<div class="card-body connect-actions" id="connect-actions" data-state="checking">
+							<button id="abstractus-pair-native" class="button primary connect-primary">Connect to Abstractus Desktop</button>
+							<button id="abstractus-pair-disconnect" class="button">Disconnect this browser</button>
+							<p id="abstractus-pair-status" role="status" aria-live="polite"></p>
+							<details class="connection-backup"><summary>Use a connection code instead</summary>
+								<p class="muted">In Desktop, open Library → Browser connections → Create connection code, then paste it here.</p>
+								<label for="abstractus-pair-code">Connection code</label>
+								<input id="abstractus-pair-code" type="password" autocomplete="off" spellcheck="false"/>
+								<div class="actions"><button id="abstractus-pair-connect" class="button">Connect with code</button></div>
+							</details>
 						</div>
 					</div>
-				</div>
-			</div>
-			<div class="group" id="advanced-group-config-editor">
-				<div class="group-title">Advanced Configuration</div>
-				<div class="group-content">
-					<p>
-						<input type="button" id="advanced-button-config-editor" value="Config Editor"/>
-						<!--BEGIN DEBUG-->
-						<input type="button" id="advanced-button-open-test-runner" value="Open Integration Test Runner"/>
-						<!--END DEBUG-->
-					</p>
-				</div>
-			</div>
+					<div class="card">
+						<div class="card-title" data-l10n-id="preferences_saving">Saving</div>
+						<div class="card-body">
+							<p id="saving-how-to"></p>
+							<p class="muted" data-l10n-id="preferences_saving_collections">Choose a collection from the save popup to file items as you save them.</p>
+						</div>
+					</div>
+
+				</section>
+
+				<!-- React Component -->
+				<section id="content-proxies" class="content"></section>
+
+				<section id="content-advanced" class="content">
+					<header class="content-header">
+						<h1>Help &amp; diagnostics</h1>
+					</header>
+					<p>Saving and site updates work automatically. Open these tools if you need help investigating a problem.</p>
+                    					<div class="card">
+						<div class="card-title" data-l10n-id="preferences_translators">Site Translators</div>
+						<div class="card-body">
+							<p class="muted" data-l10n-id="preferences_translators_description">Translators read citation metadata from publisher and database websites and update automatically.</p>
+							<div class="actions">
+								<input type="button" class="button" id="advanced-button-reset-translators" value="Reset Translators" data-l10n-id="preferences_translators_reset"/>
+								<!--BEGIN DEBUG-->
+								<input type="button" class="button" id="advanced-button-open-translator-tester" value="Open Translator Tester"/>
+								<!--END DEBUG-->
+							</div>
+						</div>
+					</div>
+<details class="diagnostics"><summary>Troubleshooting tools</summary>
+<div class="card">
+						<div class="card-title" data-l10n-id="preferences_debugOutput">Debug Output Logging</div>
+						<div class="card-body">
+							<p class="muted" data-l10n-id="preferences_debugOutput_description">Debug output can help diagnose problems with saving.</p>
+							<div class="toggles">
+								<label class="toggle"><input type="checkbox" id="advanced-checkbox-enable-logging"/><span data-l10n-id="preferences_debugOutput_enable">Enable logging</span></label>
+								<label class="toggle"><input type="checkbox" id="advanced-checkbox-enable-at-startup"/><span data-l10n-id="preferences_debugOutput_enableAtStartup">Enable at startup</span></label>
+							</div>
+							<div class="actions">
+								<span id="advanced-span-lines-logged" class="badge">0 lines logged</span>
+								<span class="spacer"></span>
+								<input type="button" class="button" id="advanced-button-view-output" value="View Output" data-l10n-id="preferences_debugOutput_view"/>
+								<input type="button" class="button" id="advanced-button-copy-output" value="Copy to Clipboard" data-l10n-id="general_copyToClipboard"/>
+								<input type="button" class="button" id="advanced-button-clear-output" value="Clear Output" data-l10n-id="preferences_debugOutput_clear"/>
+							</div>
+							<textarea id="advanced-textarea-debug" class="log" style="display:none" readonly="true"></textarea>
+						</div>
+					</div>
+					<div class="card">
+						<div class="card-title" data-l10n-id="preferences_errors">Error Log</div>
+						<div class="card-body">
+							<div id="advanced-no-errors">
+								<p class="muted" data-l10n-id="preferences_reportErrors_none">No errors have been logged.</p>
+							</div>
+							<div id="advanced-have-errors" style="display:none">
+								<p class="muted" data-l10n-id="preferences_reportErrors_subtitle" data-l10n-client-name>The following errors have occurred since the Connector was started:</p>
+								<textarea id="advanced-textarea-errors" class="log" readonly="true"></textarea>
+								<div class="actions">
+									<input type="button" class="button" id="advanced-button-copy-errors" value="Copy to Clipboard" data-l10n-id="general_copyToClipboard"/>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="card" id="advanced-group-config-editor">
+						<div class="card-title" data-l10n-id="preferences_configEditor">Advanced Configuration</div>
+						<div class="card-body">
+							<p class="muted" data-l10n-id="preferences_configEditor_description">Edit low-level Connector settings.</p>
+							<div class="actions">
+								<input type="button" class="button" id="advanced-button-config-editor" value="Open Config Editor" data-l10n-id="preferences_configEditor_open"/>
+								<!--BEGIN DEBUG-->
+								<input type="button" class="button" id="advanced-button-open-test-runner" value="Open Integration Test Runner"/>
+								<!--END DEBUG-->
+							</div>
+						</div>
+					</div>
+				</details>
+				</section>
+			</main>
 		</div>
 		<script type="text/javascript" src="../browser-polyfill.js"></script>
 		<script type="text/javascript" src="../lib/react.js"></script>
@@ -154,9 +163,6 @@
 		<script type="text/javascript" src="../translate/promise.js"></script>
 		<script type="text/javascript" src="../messages.js"></script>
 		<script type="text/javascript" src="../messaging_inject.js"></script>
-		<!-- SAFARI -->
-		<script type="text/javascript" src="../frameMessaging.js"></script>
-		<!-- /SAFARI -->
 		<script type="text/javascript" src="../zoteroFrame.js"></script>
 		<script type="text/javascript" src="../inject/modalPrompt_inject.js"></script>
 		<script type="text/javascript" src="../i18n.js"></script>
@@ -165,5 +171,6 @@
 		<!--BEGIN DEBUG-->
 		<script type="text/javascript" src="../lib/sinon.js"></script>
 		<!--END DEBUG-->
-	</body>
+	<script src="pairing-settings.js"></script>
+</body>
 </html>

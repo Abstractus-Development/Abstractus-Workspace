@@ -28,7 +28,8 @@
 // and changes the action button into a "tick.png" icon after the save is complete
 Zotero.WebRequestIntercept.addListener('headersReceived', function(details) {
 	// Proxy login is a POST method that gets redirected to the final destination via a 302
-	if (details.method != "GET" && details.statusCode < 300 && details.statusCode >= 400) return;
+	if (!Number.isInteger(details.tabId) || details.tabId < 0 || details.type !== 'main_frame') return;
+	if (details.method !== 'GET' || details.statusCode < 200 || details.statusCode >= 300) return;
 	
 	let isPDF = false;
 	let isCSPProtected = false;
@@ -62,16 +63,22 @@ Zotero.WebRequestIntercept.addListener('headersReceived', function(details) {
 	
 	// Somehow browser.webNavigation.onCommitted runs later than headersReceived
 	setTimeout(async function() {
-		var tab = await browser.tabs.get(details.tabId);
+		let tab;
+		try { tab = await browser.tabs.get(details.tabId); }
+		catch { return; } // A closed tab is a normal browser event.
+		// The browser can navigate during the deferred update. Do not mark its new page.
+		if (!tab?.url || tab.url.split('#')[0] !== details.url.split('#')[0]) return;
 		let tabInfo = Zotero.Connector_Browser.getTabInfo(tab.id);
 		tabInfo.uninjectable = true;
 		tabInfo.isPDF = isPDF;
 		tabInfo.contentType = contentType;
-		Zotero.Connector_Browser._updateExtensionUI(tab);
+		try { await Zotero.Connector_Browser._updateExtensionUI(tab); }
+		catch (error) { Zotero.logError(error); }
 	}, 100);
 });
 
 Zotero.Utilities.saveWithoutProgressWindow = async function (tab, frameId) {
+	const action = browser.action || browser.browserAction;
 	let url = tab.url;
 	let tabInfo = Zotero.Connector_Browser.getTabInfo(tab.id);
 	const pdf = tabInfo.isPDF;
@@ -93,37 +100,30 @@ Zotero.Utilities.saveWithoutProgressWindow = async function (tab, frameId) {
 		data.title = url;
 	}
 	try {
-		browser.browserAction.setIcon({
+		action.setIcon({
 			tabId:tab.id,
 			path: {
 				'16': 'images/spinner-16px.png',
 				'32': 'images/spinner-16px@2x.png'
 			}
 		});
-		browser.browserAction.setTitle({
+		action.setTitle({
 			tabId:tab.id,
 			title: Zotero.getString('browserAction_saving')
 		});
 		
-		try {
-			// Check availability before fetching the attachment
-			await Zotero.Connector.ping();
-			await Zotero.ItemSaver.saveStandaloneAttachmentToZotero(data, data.sessionID, tab);
-		}
-		catch (e) {
-			if (e.status !== 0 || !pdf) throw e;
-			data.linkMode = 'imported_url';
-			await Zotero.ItemSaver.saveAttachmentToServer(data, tab);
-		}
-		
-		browser.browserAction.setIcon({
+		// Check availability before fetching the attachment
+		await Zotero.Connector.ping();
+		await Zotero.ItemSaver.saveStandaloneAttachmentToZotero(data, data.sessionID, tab);
+
+		action.setIcon({
 			tabId:tab.id,
 			path: {
 				'16': 'images/tick.png',
 				'32': 'images/tick@2x.png'
 			}
 		});
-		browser.browserAction.setTitle({
+		action.setTitle({
 			tabId:tab.id,
 			title: Zotero.getString('browserAction_saved')
 		});
@@ -134,14 +134,14 @@ Zotero.Utilities.saveWithoutProgressWindow = async function (tab, frameId) {
 			Zotero.logError(e);
 		}
 		
-		browser.browserAction.setIcon({
+		action.setIcon({
 			tabId:tab.id,
 			path: "images/cross.png"
 		});
 		
-		browser.browserAction.setTitle({
+		action.setTitle({
 			tabId:tab.id,
-			title: Zotero.getString('browserAction_saveFailed', ZOTERO_CONFIG.CLIENT_NAME)
+			title: e.name === 'AbstractusConnectionError' ? e.message : Zotero.getString('browserAction_saveFailed', ZOTERO_CONFIG.CLIENT_NAME)
 		});
 	}
 }

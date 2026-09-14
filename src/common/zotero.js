@@ -111,9 +111,6 @@ var Zotero = global.Zotero = new function() {
 		if (Zotero.Utilities.semverCompare(lastVersion, "5.0.87") < 0 && !this.isFirefox) {
 			Zotero.Prefs.set('firstUse', false);
 		}
-		if (Zotero.Utilities.semverCompare(lastVersion, "5.0.110") < 0) {
-			Zotero.Prefs.set('integration.googleDocs.useGoogleDocsAPI', false)
-		}
 		if (Zotero.Utilities.semverCompare(lastVersion, "5.0.168") < 0 && Zotero.isFirefox) {
 			// We were setting DNR header replacement rules on Firefox http.js without
 			// removing them, and this breaks translation sometimes
@@ -145,7 +142,6 @@ var Zotero = global.Zotero = new function() {
 					Zotero.logError(e);
 					return;
 				}
-				await Zotero.API.clearCredentials();
 				Zotero.Prefs.set('migration.resetTranslators', true);
 			}
 		}
@@ -204,26 +200,15 @@ var Zotero = global.Zotero = new function() {
 		if (storingDebugOnRestart) Zotero.Debug.setStore(storingDebugOnRestart);
 		Zotero.Prefs.set('debug.store', false);
 		Zotero.WebRequestIntercept.init();
-		Zotero.ContentTypeHandler.init();
 		await Zotero.Connector_Browser.init();
 		await Zotero.i18n.init();
 		Zotero.Translators.init();
 		await Zotero.Proxies.init();
 		await this._initDateFormatsJSON();
 		Zotero.initDeferred.resolve();
-		if (Zotero.GoogleDocs.API.init) {
-			await Zotero.GoogleDocs.API.init();
-		}
 		Zotero.initialized = true;
 
 		await Zotero.migrate();
-
-		// Flush any previously-failed server-side API key revocation.
-		// Fire-and-forget: a network failure here just means we try again on
-		// the next startup (pref stays set).
-		if (Zotero.API && Zotero.API.retryPendingRevocation) {
-			Zotero.API.retryPendingRevocation().catch(e => Zotero.logError(e));
-		}
 	};
 	
 	/**
@@ -236,7 +221,6 @@ var Zotero = global.Zotero = new function() {
 		if (Zotero.isSafari) {
 			await Zotero.i18n.init();
 		}
-		Zotero.ConnectorIntegration.init();
 		Zotero.Connector_Types.init();
 		Zotero.Schema.init();
 		await this._initDateFormatsJSON();
@@ -339,40 +323,31 @@ Zotero.Prefs = new function() {
 		"debug.level": 5,
 		"debug.time": false,
 		"lastVersion": "",
+		// The desktop app reports its own values for these in the ping response
 		"downloadAssociatedFiles": true,
-		"automaticSnapshots": true, // only affects saves to zotero.org. saves to client governed by pref in the client
-		"automaticTags": true, // only affects saves to zotero.org. saves to client governed by pref in the client
+		"automaticSnapshots": false,
+		"automaticTags": true,
 		"connector.repo.lastCheck.localTime": 0,
 		"connector.repo.lastCheck.repoTime": 0,
-		"connector.url": 'http://127.0.0.1:23119/',
+		"connector.url": ZOTERO_CONFIG.CONNECTOR_URL,
 		"capitalizeTitles": false,
-		"interceptKnownFileTypes": true,
-		"allowedCSLExtensionHosts": ["^https://raw\\.githubusercontent\\.com/", "^https://gitee\\.com/.+/raw/"],
-		"allowedInterceptHosts": [],
 		"firstUse": true,
-		"firstSaveToServer": true,
-		"reportTranslationFailure": true,
+		// Abstractus: never report translation failures to the Zotero repository
+		"reportTranslationFailure": false,
 		"singleFileConfig": {},
 		"translatorMetadata": [],
 		
-		"proxies.transparent": true,
-		"proxies.autoRecognize": true,
-		"proxies.showRedirectNotification": true,
+		// Abstractus: proxy redirection is disabled for now (no prompts, no redirects).
+		// Zotero's implementation is kept intact so it can be re-enabled in a later release.
+		"proxies.transparent": false,
+		"proxies.autoRecognize": false,
+		"proxies.showRedirectNotification": false,
 		"proxies.disableByDomain": false,
 		"proxies.disableByDomainString": '.edu',
 		"proxies.proxies": [],
-		"proxies.loopPreventionTimestamp": 0,
-		
-		"integration.googleDocs.enabled": true,
-		"integration.googleDocs.useV2API": false,
-		
-		"shortcuts.cite": {ctrlKey: true, altKey: true, key: 'c'}
+		"proxies.loopPreventionTimestamp": 0
 	};
 
-	if (Zotero.isMac) {
-		DEFAULTS['shortcuts.cite'] = {metaKey: true, ctrlKey: true, key: 'c'}
-	}
-	
 	this.syncStorage = {};
 
 	/**

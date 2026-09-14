@@ -103,7 +103,7 @@ if (isTopWindow) {
 		}
 		catch (e) {
 			// TODO: Shouldn't this be coupled to the actual save process?
-			changeHeadline(Zotero.getString('progressWindow_savingToOnlineLibrary'));
+			changeHeadline(Zotero.getString('general_saveTo', ZOTERO_CONFIG.CLIENT_NAME));
 			return;
 		}
 		
@@ -243,14 +243,14 @@ if (isTopWindow) {
 		zoteroFrame = new Zotero.Frame({
 			id: frameID,
 			src: frameSrc,
-			title: Zotero.getString('general_saveTo', 'Zotero'),
+			title: Zotero.getString('general_saveTo', ZOTERO_CONFIG.CLIENT_NAME),
 			'data-single-file-hidden-frame': ''
 		}, {
 			position: 'fixed',
 			top: '15px',
 			left: 'unset',
 			right: '8px',
-			width: '351px',
+			width: '400px',
 			maxWidth: '95%',
 			height: '120px',
 			border: "none",

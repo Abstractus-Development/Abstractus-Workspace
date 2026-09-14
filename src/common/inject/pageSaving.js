@@ -307,7 +307,7 @@ let PageSaving = {
 	 * @returns {Promise<*>}
 	 */
 	async saveAsWebpage({ title=document.title, snapshot: saveSnapshot=true } = {}) {
-		var result = await Zotero.Inject.checkActionToServer();
+		var result = await Zotero.Inject.checkClientAvailable();
 		if (!result) return;
 
 		var isTextLike = document.contentType.startsWith('text')
@@ -352,7 +352,8 @@ let PageSaving = {
 			items[0] = { ...items[0], progress: 100, itemsLoaded: 1 };
 			Zotero.Messaging.sendMessage("progressWindow.itemProgress", items[0]);
 
-			if (saveSnapshot) {
+			// Abstractus: only take a snapshot if the desktop app can store it
+			if (saveSnapshot && await Zotero.Connector.getPref('automaticSnapshots')) {
 				await this._saveSingleFile(items[0], data);
 			}
 
@@ -366,21 +367,9 @@ let PageSaving = {
 		} catch (e) {
 			// Client unavailable
 			if (e.status === 0) {
-				let itemSaver = new Zotero.ItemSaver({});
-				this.sessionDetails.itemSaver = itemSaver;
-				let result = await itemSaver.saveAsWebpage();
-				items[0].key = result[0].key;
-				Zotero.Messaging.sendMessage("progressWindow.itemProgress", { ...items[0], progress: 100 });
-				const automaticSnapshots = await Zotero.Prefs.getAsync("automaticSnapshots")
-				if (automaticSnapshots) {
-					await this._saveSingleFile(items[0], data, true);
-				}
-				Zotero.Messaging.sendMessage("progressWindow.done", [true]);
-				return;
+				Zotero.Messaging.sendMessage("progressWindow.done", [false, 'clientRequired']);
 			}
-			// Unexpected error, including a timeout (which we don't want to
-			// result in a save to the server, because it's possible the request
-			// will still be processed)
+			// Unexpected error, including a timeout
 			else if (!e.value || e.value.libraryEditable != false) {
 				Zotero.Messaging.sendMessage("progressWindow.done", [false, 'unexpectedError']);
 			}
@@ -388,7 +377,7 @@ let PageSaving = {
 		}
 	},
 
-	async _saveSingleFile(item, data, toServer = false) {
+	async _saveSingleFile(item, data) {
 		let isSingleFileAvailable = document.contentType.startsWith("text")
 			|| document.contentType.includes("html");
 		// Once snapshot item is created, if requested, run SingleFile
@@ -411,21 +400,13 @@ let PageSaving = {
 			Zotero.Messaging.sendMessage("progressWindow.itemProgress", snapshotItem);
 
 			try {
-				const snapshotContent = await Zotero.SingleFile.retrievePageData();
-
-				if (toServer) {
-					snapshotItem.data = snapshotContent;
-					await Zotero.ItemSaver.saveAttachmentToServer(snapshotItem);
-				}
-				else {
-					data.snapshotContent = snapshotContent;
-					await Zotero.Connector.saveSingleFile({
-							method: "saveSingleFile",
-							headers: {"Content-Type": "application/json"}
-						},
-						data
-					);
-				}
+				data.snapshotContent = await Zotero.SingleFile.retrievePageData();
+				await Zotero.Connector.saveSingleFile({
+						method: "saveSingleFile",
+						headers: {"Content-Type": "application/json"}
+					},
+					data
+				);
 
 				Zotero.Messaging.sendMessage("progressWindow.itemProgress", { ...snapshotItem, progress: 100 });
 			}
@@ -500,18 +481,13 @@ let PageSaving = {
 				url: document.location.href,
 			});
 		} catch (e) {
+			Zotero.Messaging.sendMessage("progressWindow.itemProgress", { ...progressItem, ...{ progress: false } });
 			// Client unavailable
 			if (e.status === 0) {
-				Zotero.Messaging.sendMessage("progressWindow.itemProgress", { ...progressItem, ...{ progress: 0 } });
-				await Zotero.ItemSaver.saveAttachmentToServer(standaloneAttachment);
-				Zotero.Messaging.sendMessage("progressWindow.itemProgress", { ...progressItem, ...{ progress: 100 } });
-				Zotero.Messaging.sendMessage("progressWindow.done", [true]);
-				return;
+				Zotero.Messaging.sendMessage("progressWindow.done", [false, 'clientRequired']);
 			}
 			else if (!e.value || e.value.libraryEditable != false) {
-				// Unexpected error, including a timeout (which we don't want to
-				// result in a save to the server, because it's possible the request
-				// will still be processed)
+				// Unexpected error, including a timeout
 				Zotero.Messaging.sendMessage("progressWindow.done", [false, 'unexpectedError']);
 			}
 			throw e;
@@ -524,7 +500,7 @@ let PageSaving = {
 	 * with selection as a note.
 	 */
 	async onTranslate(translatorID, options={}) {
-		let result = await Zotero.Inject.checkActionToServer();
+		let result = await Zotero.Inject.checkClientAvailable();
 		if (!result) return;
 		let translatorIndex = this.translators.findIndex(t => t.translatorID === translatorID);
 		let translator = this.translators[translatorIndex];
@@ -612,7 +588,7 @@ let PageSaving = {
 	 * Entry point for clicking on the Zotero button to save when no translators are available
 	 */
 	async onSaveAsWebpage([ title=document.title, options={} ]) {
-		var result = await Zotero.Inject.checkActionToServer();
+		var result = await Zotero.Inject.checkClientAvailable();
 		if (!result) return;
 
 		Zotero.debug(`PageSaving.onSaveAsWebpage: Saving webpage, ${JSON.stringify(options)}`);

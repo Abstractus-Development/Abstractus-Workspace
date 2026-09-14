@@ -38,7 +38,7 @@ describe('Preferences', function() {
 	});
 	
 	describe('General', function() {
-		describe('Zotero Status', function() {
+		describe('Abstractus Desktop status', function() {
 			before(async function () {
 				await background(function() {
 					sinon.stub(Zotero.Connector, 'checkIsOnline').resolves(true);
@@ -60,7 +60,7 @@ describe('Preferences', function() {
 			function clickAndReturnStatus() {
 				return tab.run(function() {
 					var spy = sinon.spy(Zotero.Connector, 'checkIsOnline');
-					document.querySelector('input[value="Update Status"]').click();
+					document.querySelector('input[value="Check Again"]').click();
 					return spy.lastCall.returnValue.then(function() {
 						spy.restore();
 						return document.querySelector('#client-status p').textContent;
@@ -68,84 +68,21 @@ describe('Preferences', function() {
 				});	
 			}
 			
-			it('shows Zotero as available after clicking "Update Status" when Zotero is available', async function () {
+			it('shows Abstractus Desktop as available after clicking "Check Again" when the app is available', async function () {
 				await background(function() {
 					Zotero.Connector.checkIsOnline.resolves(true);
 				});	
 				let status = await clickAndReturnStatus();
-				assert.include(status, 'currently available');
+				assert.include(status, 'is running');
 			});
 			
-			it('shows Zotero as unavailable after clicking "Update Status" when Zotero is not available', async function () {
+			it('shows Abstractus Desktop as unavailable after clicking "Check Again" when the app is not available', async function () {
 				await background(function() {
 					Zotero.Connector.checkIsOnline.resolves(false);
 				});	
 				let status = await clickAndReturnStatus();
-				assert.include(status, 'currently unavailable');
+				assert.include(status, 'isn’t reachable');
 			});
-		});
-	});
-	
-	describe('Advanced', function() {	
-		it('submits an error report to Zotero.org', async function () {
-			var reportId = '1234567890';
-			
-			var message = await tab.run(async function(reportId) {
-				try {
-					sinon.stub(Zotero.HTTP, 'request').resolves(
-						{responseText: `<?xml version="1.0" encoding="UTF-8"?><xml><reported reportID="${reportId}"/></xml>`}
-					);
-					var deferred = Zotero.Promise.defer();
-					sinon.stub(Zotero.ModalPrompt, 'confirm').callsFake((config) => {
-						deferred.resolve(config);
-						return {button: 0};
-					});
-					document.getElementById('advanced-button-report-errors').click();
-					return await deferred.promise.then(function(config) {
-						Zotero.ModalPrompt.confirm.restore();
-						return config.message;
-					});
-				} finally {
-					Zotero.HTTP.request.restore();
-				}
-			}, reportId);
-			
-			assert.include(message, reportId);
-		});
-		
-		it('submits a debug log to Zotero.org', async function () {
-			var debugId = '1234567890';
-			var testDebugLine = 'testDebugLine';
-
-			await tab.run(function(testDebugLine) {
-				document.getElementById('advanced-checkbox-enable-logging').click();
-				Zotero.debug(testDebugLine);
-				return Zotero_Preferences.refreshData();
-			}, testDebugLine);
-			var [message, debugLogBody] = await tab.run(async function(debugId) {
-				try {
-					sinon.stub(Zotero.HTTP, 'request').resolves(
-						{responseText: `<?xml version="1.0" encoding="UTF-8"?><xml><reported reportID="${debugId}"/></xml>`}
-					);
-					var deferred = Zotero.Promise.defer();
-					sinon.stub(Zotero.ModalPrompt, 'confirm').callsFake((config) => {
-						deferred.resolve(config);
-						return {button: 0};
-					});
-					document.getElementById('advanced-checkbox-enable-logging').click();
-					document.getElementById('advanced-button-submit-output').click();
-					return await deferred.promise.then(function(config) {
-						Zotero.ModalPrompt.confirm.restore();
-						document.getElementById('advanced-button-clear-output').click();
-						return [config.message, Zotero.HTTP.request.lastCall.args[2].body];
-					}).catch(e => ['error', e]);
-				} finally {
-					Zotero.HTTP.request.restore();
-				}
-			}, debugId);
-			
-			assert.include(message, `D${debugId}`);
-			assert.include(debugLogBody, testDebugLine);
 		});
 	});
 });

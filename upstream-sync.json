@@ -1,0 +1,6 @@
+{
+  "remote": "upstream",
+  "ref": "refs/remotes/upstream/master",
+  "url": "https://github.com/zotero/zotero-connectors.git",
+  "baseRevision": "1d4fac3779aeec9ca7975d8a771c177f34fbd982"
+}

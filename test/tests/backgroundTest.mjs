@@ -117,40 +117,4 @@ describe('Connector_Browser', function() {
 			});
 		});
 	});
-	
-	describe('onPDFFrame', function() {
-		it('sets icon to PDF if no translators present', async function () {
-			try {
-				let bgPromise = background(function() {
-					Zotero.Prefs.set('firstUse', false);
-					let stub = sinon.stub(Zotero.Connector_Browser, '_showPDFIcon');
-					var deferred = Zotero.Promise.defer();
-					stub.callsFake(deferred.resolve);
-					
-					// Independent of the online status of Zotero client we need to observe content types
-					// to trigger the onPDFFrame icon, but don't want to affect the already attached
-					// observer state, so we generate a custom function to work with
-					let customObserver = details => Zotero.ContentTypeHandler.onHeadersReceived(details);
-					Zotero.WebRequestIntercept.addListener('headersReceived', customObserver);
-					deferred.promise.then(() => Zotero.WebRequestIntercept.removeListener('headersReceived', customObserver));
-					return deferred.promise;
-				});
-				const url = getExtensionURL('test/data/framePDF.html');
-				await tab.init(url);
-				await bgPromise;
-	
-				let result = await background(() => {
-					return Zotero.Connector_Browser._showPDFIcon.called;
-				});
-				assert.isTrue(result);
-			} finally {
-				await background(function() {
-					Zotero.Connector_Browser._showPDFIcon.restore()
-				});
-				if (tab.tabId) {
-					await tab.close();
-				}
-			}
-		});
-	});
 });

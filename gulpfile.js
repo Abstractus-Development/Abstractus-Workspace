@@ -56,6 +56,7 @@ var injectInclude = [
 	'utilities/utilities.js',
 	'utilities/utilities_item.js',
 	'utilities.js',	
+	'network-policy.js',
 	'http.js',
 	'proxy.js',
 	'translate/debug.js',
@@ -74,7 +75,6 @@ var injectInclude = [
 	'translateWeb.js',
 	'itemSaver.js',
 	'inject/pageSaving.js',
-	'integration/connectorIntegration.js',
 	'cachedTypes.js',
 	'schema.js',
 	'messages.js',
@@ -98,21 +98,15 @@ if (argv.p) {
 }
 var injectIncludeFirefox = ['browser-polyfill.js'].concat(
 	injectInclude,
-	['api.js'],
 	injectIncludeLast);
 
-var injectIncludeSafari = ['reinjectGuard.js', 'browser-polyfill.js'].concat(
-	injectInclude,
-	['api.js'],
-	['frameMessaging.js'],
-	['historyMonitor.js'],
-	injectIncludeLast);
-	
 var injectIncludeManifestV3 = ['browser-polyfill.js'].concat(
 	injectInclude,
-	['api.js'],
 	['inject/virtualOffscreenTranslate.js'],
 	injectIncludeLast);
+
+// Abstractus: Chromium (MV3) and Firefox only
+const BROWSERS = ['manifestv3', 'firefox'];
 
 var backgroundInclude = [
 	'zotero_config.js',
@@ -129,12 +123,11 @@ var backgroundInclude = [
 	'utilities/resource/zoteroTypeSchemaData.js',
 	'utilities.js',
 	'prefs.js',
-	'api.js',
+	'network-policy.js',
 	'http.js',
-	'oauthsimple.js',
 	'proxy.js',
+	'secure-connector.js',
 	'connector.js',
-	'updaterFix.js',
 	'repo.js',
 	'translate/debug.js',
 	'translate/tlds.js',
@@ -144,7 +137,6 @@ var backgroundInclude = [
 	'translators.js',
 	'cachedTypes.js',
 	'errors_webkit.js',
-	'zotero-google-docs-integration/api.js',
 	'messages.js',
 	'messaging.js',
 ];
@@ -160,7 +152,6 @@ if (!argv.p) {
 var backgroundIncludeBrowserExt = ['browser-polyfill.js'].concat(backgroundInclude, [
 	'hostPermissions.js',
 	'webRequestIntercept.js',
-	'contentTypeHandler.js',
 	'saveWithoutProgressWindow.js',
 	'messagingGeneric.js',
 	'browserAttachmentMonitor/browserAttachmentMonitor.js',
@@ -199,18 +190,6 @@ function replaceScriptsHTML(string, match, scripts) {
 	return string.replace(match,
 		scripts.map((s) => '<script type="text/javascript" src="' + s + '"></script>')
 			.join('\n'));
-}
-
-// Safari needs an explicit UTF-8 BOM or UTF-8 characters are garbled
-function addUTF8BOM(file) {
-	if (!file.path.includes(`${path.sep}build${path.sep}safari${path.sep}`)
-		|| path.extname(file.path) !== '.js') {
-		return;
-	}
-	let bom = Buffer.from([0xEF, 0xBB, 0xBF]);
-	if (!file.contents.slice(0, 3).equals(bom)) {
-		file.contents = Buffer.concat([bom, file.contents]);
-	}
 }
 
 function processFile() {
@@ -257,19 +236,9 @@ function processFile() {
 		switch (basename) {
 			case 'zotero_config.js':
 				var contents = file.contents.toString();
-				if (process.env.ZOTERO_GOOGLE_DOCS_DEV_MODE) {
-					contents = contents.replace('GOOGLE_DOCS_DEV_MODE: false',
-						'GOOGLE_DOCS_DEV_MODE: true');
-				}
-				if (process.env.ZOTERO_GOOGLE_DOCS_API_URL) {
-					contents = contents.replace(/GOOGLE_DOCS_API_URL: [^,]*/,
-						`GOOGLE_DOCS_API_URL: "${process.env.ZOTERO_GOOGLE_DOCS_API_URL}"`);
-				}
-				if (process.env.ZOTERO_GOOGLE_DOCS_OAUTH_CLIENT_KEY) {
-					contents = contents.replace(
-						'222339878061-13uqre19u268oo9pdapuaifklbu8d6js.apps.googleusercontent.com',
-						process.env.ZOTERO_GOOGLE_DOCS_OAUTH_CLIENT_KEY
-					);
+				if (process.env.ABSTRACTUS_CONNECTOR_URL) {
+					contents = contents.replace(/CONNECTOR_URL: [^,]*/,
+						`CONNECTOR_URL: "${process.env.ABSTRACTUS_CONNECTOR_URL}"`);
 				}
 				if (process.env.ZOTERO_REPOSITORY_URL) {
 					contents = contents.replace(/REPOSITORY_URL: [^,]*/,
@@ -315,10 +284,9 @@ function processFile() {
 				file.contents = Buffer.from(replaceScriptsHTML(
 					file.contents.toString(), "<!--SCRIPTS-->", injectIncludeManifestV3.map(s => `../../${s}`)));
 			}
-			for (let browser of ['manifestv3', 'firefox', 'safari']) {
+			for (let browser of BROWSERS) {
 				if (basename === 'manifest.json' && browser === 'manifestv3'
-					|| basename === 'manifest-v3.json' && browser === 'firefox'
-					|| basename === 'manifest-v3.json' && browser === 'safari') {
+					|| basename === 'manifest-v3.json' && browser === 'firefox') {
 					continue;
 				}
 				
@@ -338,23 +306,12 @@ function processFile() {
 						let backgroundScripts = backgroundIncludeBrowserExt;
 						let injectScripts = browser == "manifestv3"
 							? injectIncludeManifestV3
-							: browser == "safari" ? injectIncludeSafari : injectIncludeFirefox;
+							: injectIncludeFirefox;
 						contents = contents
 							.replace("/*BACKGROUND SCRIPTS*/",
 								backgroundScripts.map((s) => `"${s}"`).join(',\n\t\t\t'))
 							.replace("/*INJECT SCRIPTS*/",
 								injectScripts.map((s) => `"${s}"`).join(',\n\t\t\t'))
-						if (basename == 'manifest.json' && browser == 'safari') {
-							// Safari runs content scripts only on sites where the user has granted
-							// access, so the pre-detection gray webpage icon can show indefinitely --
-							// default to the Z instead
-							let manifest = JSON.parse(contents);
-							manifest.browser_action.default_icon = {
-								16: "images/zotero-z-16px.png",
-								32: "images/zotero-z-32px.png"
-							};
-							contents = JSON.stringify(manifest, null, '\t');
-						}
 					}
 					
 					contents = contents
@@ -365,7 +322,7 @@ function processFile() {
 					}
 					f.contents = Buffer.from(contents);
 				}
-				if (file.path.includes('.html') && browser != 'safari') {
+				if (file.path.includes('.html')) {
 					let contents = f.contents.toString()
 						.replace(/\s*<!-- SAFARI -->[\s\S]*?<!-- \/SAFARI -->/g, '');
 					f.contents = Buffer.from(contents);
@@ -381,36 +338,17 @@ function processFile() {
 					f.contents = Buffer.from(contents);
 				}
 				f.path = parts.slice(0, i-1).join('/') + `/build/${browser}/` + parts.slice(i+1).join('/');
-				addUTF8BOM(f);
 				console.log(`-> ${f.path.slice(f.cwd.length)}`);
 				this.push(f);
 			}
 		}
-		if (type === 'safari') {
-			f = file.clone({contents: false});
-			f.path = parts.slice(0, i-1).join('/') + `/build/safari/` + parts.slice(i+1).join('/');
-			addUTF8BOM(f);
-			console.log(`-> ${f.path.slice(f.cwd.length)}`);
-			this.push(f);
-		}
-		if (type === 'zotero-google-docs-integration') {
-			['manifestv3', 'firefox', 'safari'].forEach((browser) => {
-				f = file.clone({contents: false});
-				f.path = parts.slice(0, i-1).join('/') + `/build/${browser}/zotero-google-docs-integration/`
-					+ parts.slice(i+3).join('/');
-				addUTF8BOM(f);
-				console.log(`-> ${f.path.slice(f.cwd.length)}`);
-				this.push(f);
-			});
-		}
-		
+
 		cb();
 	});
 }
 
 gulp.task('watch', function () {
-	var watcher = gulp.watch(['./src/browserExt/**', './src/common/**', './src/safari/**',
-		'./src/zotero-google-docs-integration/src/connector/**']);
+	var watcher = gulp.watch(['./src/browserExt/**', './src/common/**']);
 	watcher.on('change', function(path) {
 		gulp.src(path)
 			.pipe(plumber())
@@ -420,8 +358,7 @@ gulp.task('watch', function () {
 });  
 
 gulp.task('watch-chromium', function () {
-	var watcher = gulp.watch(['./src/browserExt/**', './src/common/**', './src/safari/**',
-		'./src/zotero-google-docs-integration/src/connector/**']);
+	var watcher = gulp.watch(['./src/browserExt/**', './src/common/**']);
 	watcher.on('change', function(filePath) {
 		gulp.src(filePath)
 			.pipe(plumber())
@@ -437,7 +374,6 @@ gulp.task('process-custom-scripts', function() {
 		'./src/browserExt/background-worker.js',
 		'./src/browserExt/manifest.json',
 		'./src/browserExt/manifest-v3.json',
-		'./src/browserExt/confirm/confirm.html',
 		'./src/common/preferences/preferences.html',
 		'./src/common/progressWindow/progressWindow.html',
 		'./src/common/modalPrompt/modalPrompt.html',
@@ -445,10 +381,8 @@ gulp.task('process-custom-scripts', function() {
 		'./src/common/schema.js',
 		'./src/common/zotero.js',
 		'./src/common/zotero_config.js',
-		'./src/safari/**',
 		'./src/common/test/**/*',
-		'./src/**/*.jsx',
-		'./src/zotero-google-docs-integration/src/connector/**',
+		'./src/{common,browserExt}/**/*.jsx',
 	];
 	return gulp.src(sources)
 		.pipe(plumber())

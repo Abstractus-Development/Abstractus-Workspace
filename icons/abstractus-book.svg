@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Abstractus Library</title>
+  <rect x="10" y="10" width="492" height="492" rx="85" fill="#1B2EB8" stroke="#b9c7ff" stroke-width="10"/>
+  <path fill="#F47A00" d="M40 78c75-22 143-13 200 23v340c-58-35-125-44-200-22V78Zm432 0c-75-22-143-13-200 23v340c58-35 125-44 200-22V78Z"/>
+  <path fill="none" stroke="#fff" stroke-linecap="round" stroke-width="20" d="M87 148c35-3 66 2 99 15m-99 54c35-3 66 2 99 15m-99 54c35-3 66 2 99 15m140-138c33-13 64-18 99-15m-99 84c33-13 64-18 99-15m-99 84c33-13 64-18 99-15"/>
+</svg>

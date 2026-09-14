@@ -88,9 +88,6 @@ Zotero.Inject = {
 		}, false);
 		
 		this._addMessageListeners();
-		this._addZoteroButtonElementListener();
-		
-		this._handleOAuthComplete()
 
 		if(document.readyState !== "complete") {
 			window.addEventListener("pageshow", function(e) {
@@ -102,17 +99,6 @@ Zotero.Inject = {
 		}	
 	},
 
-	/**
-	 * Call OAuth complete listeners if on the relevant URL
-	 */
-	_handleOAuthComplete() {
-		if(document.location.href.substr(0, ZOTERO_CONFIG.OAUTH.ZOTERO.CALLBACK_URL.length+1) === ZOTERO_CONFIG.OAUTH.ZOTERO.CALLBACK_URL+"?") {
-			Zotero.API.onAuthorizationComplete(document.location.href.substr(ZOTERO_CONFIG.OAUTH.ZOTERO.CALLBACK_URL.length+1));
-		} else if (document.location.href.substr(0, ZOTERO_CONFIG.OAUTH.ZOTERO.CALLBACK_URL.length+1) === ZOTERO_CONFIG.OAUTH.GOOGLE_DOCS.CALLBACK_URL+"#") {
-			Zotero.GoogleDocs_API.onAuthComplete(document.location.href);
-		}
-	},
-	
 	_addMessageListeners() {
 		// add listener for translate message from background page
 		Zotero.Messaging.addMessageListener("translate", function(data) {
@@ -148,41 +134,6 @@ Zotero.Inject = {
 		});
 	},
 
-	_addZoteroButtonElementListener() {
-		document.addEventListener("click", (e) => {
-				// Only user-initiated, primary-button, no modifiers
-				if ((!e.isTrusted && !Zotero.isDebug) || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
-					return;
-				}
-				
-				// Find the nearest <a> with an href
-				let a = e.target.closest("a[href]");
-				if (!a) return;
-				
-				let url;
-				try {
-					url = new URL(a.href);
-				}
-				catch {
-					return;
-				}
-				
-				// Check for zotero.org/save
-				if ((url.hostname == "www.zotero.org" || url.hostname == 'zotero.org') && url.pathname.startsWith("/save")) {
-					e.preventDefault();
-					e.stopPropagation();
-		
-					Zotero.debug("Inject: Zotero button element clicked");
-					// A little indirection here, going via the background page,
-					// but that's where the logic for button click is defined
-					// although it will just send a message back here to PageSaving.
-					Zotero.Connector_Browser.onZoteroButtonElementClick();
-				}
-			},
-			{ capture: true }
-		);
-	},
-	
 	/**
 	 * Check if React and components are loaded and if not - load into page.
 	 * 
@@ -278,126 +229,56 @@ Zotero.Inject = {
 			title: Zotero.getString('firstRun_title', clientName),
 			button1Text: Zotero.getString('firstRun_acceptButton'),
 			button2Text: "",
-			message: Zotero.getString(
-					'firstRun_text1',
-					[
-						clientName,
-						"https://www.zotero.org/support/adding_items_to_zotero"
-					]
-				)
+			message: Zotero.getString('firstRun_text1', clientName)
 				+ '<br><br>'
-				+ Zotero.getString(
-					'firstRun_text2',
-					[
-						clientName,
-						// TODO: Make download URL configurable (instead of just base URL + "download")
-						ZOTERO_CONFIG.WWW_BASE_URL + "download/"
-					]
-				)
+				+ Zotero.getString('firstRun_text2', [clientName, ZOTERO_CONFIG.CLIENT_DOWNLOAD_URL])
 		});
 	},
-	
+
 	/**
-	 * @param {Boolean} localhostDenied - Zotero is unreachable because Safari denies the
-	 *     Connector access to 127.0.0.1, rather than because Zotero isn't running
+	 * Prompts the user to open Abstractus Desktop
+	 * @returns {Promise<String>} 'retry' or 'cancel'
 	 */
-	async firstSaveToServerPrompt(localhostDenied=false) {
-		var clientName = ZOTERO_CONFIG.CLIENT_NAME;
-		
-		let title, message;
-		if (localhostDenied) {
-			title = Zotero.getString('permissions_siteAccess_title');
-			message = Zotero.getString('permissions_siteAccess_message_localhost_required')
-				+ Zotero.getString(
-					'permissions_siteAccess_message_domain_safari',
-					[Zotero.getString('appConnector', clientName), '<b>127.0.0.1</b>']
-				)
-				+ Zotero.getString(
-					'permissions_siteAccess_message_saveToServer',
-					[Zotero.getString('appConnector', clientName), ZOTERO_CONFIG.DOMAIN_NAME]
-				);
-		}
-		else {
-			title = Zotero.getString('error_connection_isAppRunning', clientName);
-			message = Zotero.getString(
-					'error_connection_save',
-					[
-						Zotero.getString('appConnector', clientName),
-						clientName,
-						ZOTERO_CONFIG.DOMAIN_NAME
-					]
-				)
-				+ '<br /><br />'
-				+ Zotero.Inject.getConnectionErrorTroubleshootingString();
-		}
-		var result = await this.confirm({
-			button1Text: Zotero.getString('general_tryAgain'),
-			button2Text: Zotero.getString('general_cancel'),
-			button3Text: Zotero.getString('error_connection_enableSavingToOnlineLibrary'),
-			title,
-			message
+	async clientUnavailablePrompt() {
+		const connection = await Zotero.Connector.getConnectionState();
+		if (connection.connected) return 'retry';
+		const needsSettings = connection.state !== 'offline';
+		// Select fixed copy here: never interpolate server/page text into the HTML prompt.
+		const copy = {
+			desktop_update_required: ['Update Abstractus Desktop', 'The app on the desktop port does not support secure browser connections. Open an updated Abstractus Desktop before connecting. Reloading the extension alone will not fix this.'],
+			pairing_required: ['Connect this browser', 'Open Abstractus Library → Browser connections. Create a connection code and enter it in Connector Settings.'],
+			unverified: ['Reconnect this browser', 'Desktop could not be verified. Check that Abstractus Desktop is running, then reconnect in Connector Settings.'],
+			offline: ['Open Abstractus Desktop', 'Open the desktop app, then try saving again.']
+		};
+		const [title, message] = copy[connection.state] || copy.unverified;
+		const result = await this.confirm({
+			button1Text: needsSettings ? 'Connector settings' : Zotero.getString('general_tryAgain'),
+			button2Text: Zotero.getString('general_cancel'), title, message
 		});
-		
-		switch (result.button) {
-			case 1:
-				return 'retry';
-			
-			case 3:
-				return 'server';
-			
-			default:
-				return 'cancel';
-		}
+		if (result.button !== 1) return 'cancel';
+		if (needsSettings) { Zotero.Connector_Browser.openPreferences(); return 'cancel'; }
+		return 'retry';
 	},
-	
-	getConnectionErrorTroubleshootingString() {
-		var clientName = ZOTERO_CONFIG.CLIENT_NAME;
-		var connectorName = Zotero.getString('appConnector', ZOTERO_CONFIG.CLIENT_NAME);
-		var downloadLink = 'https://www.zotero.org/download/';
-		var troubleshootLink = 'https://www.zotero.org/support/kb/connector_zotero_unavailable';
-		return Zotero.getString(
-			'error_connection_downloadOrTroubleshoot',
-			[downloadLink, clientName, troubleshootLink]
-		);
-	},
-	
+
 	/**
-	 * If Zotero is offline and attempting action fallback to zotero.org for first time: prompts about it
-	 * Prompt only available on BrowserExt which supports programmatic injection
-	 * Otherwise just resolves to true
+	 * Checks that Abstractus Desktop is reachable before saving, prompting the user to open it
+	 * if it isn't
 	 *
 	 * @param {Boolean} permissionPromptShown - Skip the localhost permission explanation before
 	 *     the status check, e.g., on a retry after it has already been displayed
 	 * return {Promise<Boolean>} whether the action should proceed
 	 */
-	async checkActionToServer(permissionPromptShown=false) {
-		var [firstSaveToServer, zoteroIsOnline] = await Zotero.Promise.all([
-			Zotero.Prefs.getAsync('firstSaveToServer'),
-			Zotero.Connector.checkIsOnline({active: true, permissionPromptShown})
-		]);
-		if (zoteroIsOnline) {
+	async checkClientAvailable(permissionPromptShown=false) {
+		let isOnline = await Zotero.Connector.checkIsOnline({active: true, permissionPromptShown});
+		if (isOnline) {
 			return true;
 		}
-		// null means Safari blocked the localhost request, leaving Zotero's status unknown
-		let localhostDenied = zoteroIsOnline === null;
-		if (!localhostDenied && Zotero.isSafari) {
-			await Zotero.HostPermissions.prompt({
-				domains: ['repo.zotero.org', 'api.zotero.org']
-			});
-		}
-		if (!firstSaveToServer) {
-			return true;
-		}
-		var result = await this.firstSaveToServerPrompt(localhostDenied);
-		if (result == 'server') {
-			Zotero.Prefs.set('firstSaveToServer', false);
-			return true;
-		}
-		else if (result == 'retry') {
-			// If we perform the retry immediately and Zotero is still unavailable the prompt returns instantly
-			// making the user interaction confusing so we wait a bit first
+		var result = await this.clientUnavailablePrompt();
+		if (result == 'retry') {
+			// If we perform the retry immediately and the app is still unavailable the prompt returns
+			// instantly making the user interaction confusing so we wait a bit first
 			await Zotero.Promise.delay(500);
-			return this.checkActionToServer(true);
+			return this.checkClientAvailable(true);
 		}
 		return false;
 	},

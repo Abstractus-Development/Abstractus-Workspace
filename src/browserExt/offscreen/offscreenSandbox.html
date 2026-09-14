@@ -35,14 +35,18 @@
 		Zotero.HTTP.request, which is overridden in offscreenFunctionOverrides.js
 		to route via messaging to the service worker.
 	-->
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval'; form-action 'none'; frame-ancestors 'self';">	
-	<title>Zotero - Offscreen Translate Sandbox</title>
+	<!--
+		style-src 'unsafe-inline' only lets a parsed page's own inline styles apply; external
+		stylesheets, @import and url() fetches stay blocked. Without it every page parsed here
+		logs a CSP error in chrome://extensions.
+	-->
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'unsafe-inline'; form-action 'none';">
+	<title>Abstractus - Offscreen Translate Sandbox</title>
 </head>
 <body>
 <script src="../browser-polyfill.js"></script>
 <script src="../zotero_config.js"></script>
 <script src="../zotero.js"></script>
-<script src="../api.js"></script>
 <script src="../utilities/openurl.js"></script>
 <script src="../utilities/date.js"></script>
 <script src="../utilities/xregexp-all.js"></script>

@@ -105,44 +105,6 @@ Zotero.Errors = new function() {
 		}
 		return JSON.stringify(info, null, 2);
 	}
-	
-	/**
-	 * Sends an error report to the server
-	 * NB: Runs on the prefs injected page on Safari
-	 * since responseXML or DOMParser are unavailable
-	 * in the global page
-	 */
-	this.sendErrorReport = async function() {
-		var info = await this.getSystemInfo();
-		var parts = {
-			error: "true",
-			errorData: (await this.getErrors()).join('\n'),
-			extraData: '',
-			diagnostic: info
-		};
-		
-		var body = '';
-		for (var key in parts) {
-			body += key + '=' + encodeURIComponent(parts[key]) + '&';
-		}
-		body = body.substr(0, body.length - 1);
-		let headers = {'Content-Type': 'application/x-www-form-urlencoded'};
-		let options = {body, headers};
-		var xmlhttp = await Zotero.HTTP.request("POST", "https://www.zotero.org/repo/report", options);
-		let responseXML;
-		try {
-			let parser = new DOMParser();
-			responseXML = parser.parseFromString(xmlhttp.responseText, "text/xml");
-		}
-		catch (e) {
-			throw new Error('Invalid response from repository');
-		}
-		var reported = responseXML.getElementsByTagName('reported');
-		if (reported.length != 1) {
-			throw new Error('Invalid response from repository');
-		}
-		return reported[0].getAttribute('reportID');
-	}
 }
 
 if (typeof Zotero.Debug != "undefined") {

@@ -170,7 +170,7 @@ Zotero.HTTP = new function() {
 			if (Zotero.isSafari && options.headers['User-Agent']) {
 				coOptions.headers['Cookie'] = document.cookie;
 			}
-			return Zotero.COHTTP.request(method, url, coOptions).then(function (xmlhttp) {
+			return Zotero.COHTTP.request(method, new URL(url, document.location.href).href, coOptions).then(function (xmlhttp) {
 				if (!isDocRequest) return xmlhttp;
 				
 				Zotero.debug("Parsing cross-origin response for " + url);
@@ -254,6 +254,9 @@ Zotero.HTTP = new function() {
 		
 		try {
 			xmlhttp = await promise;
+			if (options.publisherOnly) {
+				Zotero.AbstractusNetwork.checkFinalURL(url, xmlhttp.responseURL);
+			}
 			if (options.debug && (xmlhttp.responseType === '' || xmlhttp.responseType === 'text')) {
 				Zotero.debug(`HTTP ${xmlhttp.status} ${xmlhttp.responseURL} response: ${xmlhttp.responseText}`);
 			}
@@ -289,7 +292,7 @@ Zotero.HTTP = new function() {
 			if (isDocRequest) {
 				coOptions.responseType = 'text';
 			}
-			return Zotero.COHTTP.request(method, url, coOptions).then(function (xmlhttp) {
+			return Zotero.COHTTP.request(method, new URL(url, document.location.href).href, coOptions).then(function (xmlhttp) {
 				if (!isDocRequest) {
 					return xmlhttp;
 				}
@@ -404,6 +407,12 @@ Zotero.HTTP = new function() {
 				}
 			}
 			
+			// Redirects are followed by the browser; a publisher request must not have
+			// landed on an internal or local address.
+			if (options.publisherOnly) {
+				Zotero.AbstractusNetwork.checkFinalURL(url, response.url);
+			}
+
 			let responseData;
 			if (options.responseType == 'arraybuffer') {
 				responseData = await response.arrayBuffer();
@@ -625,5 +634,5 @@ Zotero.HTTP = new function() {
 // Alias as COHTTP = Cross-origin HTTP; this is how we will call it from children
 // For injected scripts, this get overwritten in messaging.js (see messages.js)
 Zotero.COHTTP = {
-	request: Zotero.HTTP.request
+	request: function(method,url,options) { return Zotero.HTTP.request(method,Zotero.AbstractusNetwork.validate(url),options); }
 };

@@ -129,6 +129,7 @@ Zotero.HTTP.processDocuments = async function (urls, processor, options = {}) {
 	}
 	
 	if (typeof urls == "string") urls = [urls];
+	urls = urls.map(url => new URL(url, document.location.href).href);
 	var funcs = urls.map(url => () => {
 		let requestOptions = {
 			responseType: 'text'

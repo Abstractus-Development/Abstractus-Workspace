@@ -1,28 +1,21 @@
 {
-	"name": "Zotero Connector",
+	"name": "Abstractus Connector",
 	"manifest_version": 3,
 	"version": "AUTOFILLED",
 	"description": "__MSG_extension_description__",
 	"default_locale": "en",
 	"action": {
 		"default_icon": {
-			"16": "images/treeitem-webpage-gray.png",
-			"32": "images/treeitem-webpage-gray@2x.png",
-			"48": "images/treeitem-webpage-gray@48px.png"
+			"16": "Icon-16.png",
+			"32": "Icon-32.png",
+			"48": "Icon-48.png"
 		},
 		"default_title": "__MSG_extension_defaultTitle__"
 	},
-	"host_permissions": ["http://127.0.0.1/*", "https://repo.zotero.org/*", "https://api.zotero.org/*", "http://*/*", "https://*/*"],
+	"host_permissions": ["http://127.0.0.1/*", "https://repo.zotero.org/*", "http://*/*", "https://*/*"],
 	"permissions": ["tabs", "contextMenus", "cookies", "scripting", "offscreen",
-		"webRequest", "declarativeNetRequest", "webNavigation", "storage"],
-	"declarative_net_request": {
-		"rule_resources": [{
-			"id": "styleIntercept",
-			"enabled": true,
-			"path": "styleInterceptRules.json"
-		}]
-	},
-	"optional_permissions": ["management", "clipboardWrite"],
+		"webRequest", "declarativeNetRequest", "webNavigation", "storage", "nativeMessaging"],
+	"optional_permissions": ["clipboardWrite"],
 	"background": {
 		"service_worker": "background-worker.js"
 	},
@@ -31,23 +24,6 @@
 			"matches": ["http://*/*", "https://*/*"],
 			"run_at": "document_start",
 			"js": [/*INJECT SCRIPTS*/]
-		},
-		{
-			"matches": ["https://docs.google.com/document/*"],
-			"run_at": "document_start",
-			"js": [
-				"zotero-google-docs-integration/kixAddZoteroMenu.js"
-			]
-		},
-		{
-			"matches": ["https://docs.google.com/document/*"],
-			"run_at": "document_end",
-			"js": [
-				"zotero-google-docs-integration/googleDocs.js",
-				"zotero-google-docs-integration/client.js",
-				"zotero-google-docs-integration/clientAppsScript.js",
-				"zotero-google-docs-integration/document.js"
-			]
 		}
 	],
 	"sandbox": {
@@ -58,7 +34,6 @@
 			"images/*",
 			"progressWindow/progressWindow.html",
 			"modalPrompt/modalPrompt.html",
-			"confirm/confirm.html",
 			"test/data/journalArticle-single.html",
 			"browserAttachmentMonitor/browserAttachmentMonitor.html",
 			"lib/SingleFile/single-file-hooks-frames.js",
@@ -71,10 +46,11 @@
 	"content_security_policy": {
 		"extension_pages": "script-src 'self'; object-src 'self'"
 	},
-	"homepage_url": "https://www.zotero.org/",
+	"homepage_url": "https://www.abstractus.ai/",
 	"icons": {
 		"16": "Icon-16.png",
 		"32": "Icon-32.png",
+		"48": "Icon-48.png",
 		"64": "Icon-64.png",
 		"128": "Icon-128.png"
 	},

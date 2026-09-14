@@ -75,7 +75,7 @@ Zotero.WebRequestIntercept = {
 	},
 
 	offerSavingPDFInFrame: function(details) {
-		if (details.frameId === 0) return;
+		if (!Number.isInteger(details.tabId) || details.tabId < 0 || !Number.isInteger(details.frameId) || details.frameId <= 0 || details.type !== 'sub_frame') return;
 		if (!details.responseHeadersObject['content-type']) return;
 		const contentType = details.responseHeadersObject['content-type'].split(';')[0];
 		
@@ -172,6 +172,15 @@ Zotero.WebRequestIntercept = {
 	replaceHeaders: async function(url, headers) {
 		return this.replaceHeadersDNR(url, headers);
 	},
+
+	// Unique within this worker's lifetime (a random start keeps restarted workers from
+	// colliding with rules an earlier worker left behind); never reused, so removing a
+	// rule can never remove another request's rule.
+	_ruleID: 1 + Math.floor(Math.random() * 1e6),
+	nextRuleID: function() {
+		this._ruleID += 1;
+		return this._ruleID;
+	},
 	
 	replaceHeadersDNR: async function(url, headers) {
 		const requestHeaders = headers.map((headerObj) => {
@@ -181,7 +190,7 @@ Zotero.WebRequestIntercept = {
 			}
 			return { header: headerObj.name, value: headerObj.value, operation: 'set' }
 		});
-		const ruleID = Math.floor(Math.random() * 100000);
+		const ruleID = this.nextRuleID();
 		const rules = [{
 			id: ruleID,
 			action: {
@@ -191,6 +200,9 @@ Zotero.WebRequestIntercept = {
 			condition: {
 				resourceTypes: ['xmlhttprequest'],
 				initiatorDomains: [new URL(browser.runtime.getURL('')).hostname],
+				// Only the host this request is for: a redirect elsewhere, or any other
+				// request in flight, must not receive these headers.
+				requestDomains: [new URL(url).hostname],
 			}
 		}];
 		// Keep the service worker alive while the rule is active

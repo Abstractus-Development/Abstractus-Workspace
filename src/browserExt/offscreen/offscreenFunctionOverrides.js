@@ -39,6 +39,13 @@ function serializeTranslator(translator, properties) {
 
 const requestOverride = {
 	handler: {
+        // [method, url, options] from translator code: public HTTPS target, no injected
+        // cookies or spoofed headers, redirects re-checked.
+        postReceive: async function(args) {
+            args[1]=Zotero.AbstractusNetwork.validate(args[1]);
+            args[2]=Zotero.AbstractusNetwork.translatorRequestOptions(args[1], args[2]);
+            return args;
+        },
 		// avoid trying to post responseXML
 		preSend: async function(xhr) {
 			return {
@@ -126,12 +133,14 @@ const OFFSCREEN_BACKGROUND_OVERRIDES = {
 			}
 		},
 	},
+	// Only translation events may return to a content-script frame.
+	'Messaging.sendMessage': {handler: {postReceive: args => Zotero.AbstractusNetwork.callback(args)}},
 	'getVersion': true,
 	'getExtensionURL': true,
 	'Debug.log': true,
 	'debug': true,
 	'Errors.log': true,
-	'Messaging.sendMessage': true,
+
 	// Translator error reporting
 	'Connector_Browser.isIncognito': true,
 	'Prefs.getAll': true,

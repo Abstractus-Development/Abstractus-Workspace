@@ -36,6 +36,7 @@ function toggleDisabled(element, status) {
 }
 
 var Zotero_Preferences = {
+	PROXIES_ENABLED: false,
 	pane: {},
 	content: {},
 	visiblePaneName: null,
@@ -48,9 +49,8 @@ var Zotero_Preferences = {
 		Zotero.Messaging.addMessageListener('confirm', props => Zotero.ModalPrompt.confirm(props));
 		await Zotero.i18n.init();
 		Zotero.i18n.translateFragment(document);
+		document.getElementById('connector-version').textContent = Zotero.version;
 
-		await Zotero.Prefs.loadNamespace(['interceptKnownFileTypes', 'allowedInterceptHosts']);
-		
 		var panesDiv = document.getElementById("panes");
 		var id;
 		for(var i in panesDiv.childNodes) {
@@ -82,9 +82,12 @@ var Zotero_Preferences = {
 		Zotero_Preferences.General.init();
 		Zotero_Preferences.Advanced.init();
 
-		Zotero.Prefs.loadNamespace('proxies').then(function() {
-			Zotero_Preferences.Proxies.init();
-		});
+		// Abstractus: the proxy pane stays hidden until proxy support ships in Desktop.
+		if (Zotero_Preferences.PROXIES_ENABLED) {
+			Zotero.Prefs.loadNamespace('proxies').then(function() {
+				Zotero_Preferences.Proxies.init();
+			});
+		}
 
 
 		Zotero.initDeferred.resolve();
@@ -114,7 +117,10 @@ var Zotero_Preferences = {
 	 * Called when a pane is clicked.
 	 */
 	onPaneClick: function(e) {
-		Zotero_Preferences.selectPane(e.currentTarget.id.substr(5));
+		e.preventDefault();
+		let paneName = e.currentTarget.id.substr(5);
+		history.replaceState(null, "", `#${paneName}`);
+		Zotero_Preferences.selectPane(paneName);
 	},
 	
 	onPrefCheckboxChange: function(event) {
@@ -144,6 +150,7 @@ var Zotero_Preferences = {
 	refreshData: function() {
 		// get errors
 		return Zotero.Errors.getErrors().then(function(errors) {
+			errors = errors.filter(error => !/^Info: Service worker starts:/.test(String(error)));
 			if(errors.length) {
 				document.getElementById('advanced-no-errors').style.display = "none";
 				document.getElementById('advanced-have-errors').style.display = "block";
@@ -155,48 +162,47 @@ var Zotero_Preferences = {
 			document.getElementById('advanced-span-lines-logged').textContent
 				= Zotero.getString('preferences_debugOutput_linesLogged', count);
 			toggleDisabled(document.getElementById('advanced-button-view-output'), !count);
+			toggleDisabled(document.getElementById('advanced-button-copy-output'), !count);
 			toggleDisabled(document.getElementById('advanced-button-clear-output'), !count);
-			toggleDisabled(document.getElementById('advanced-button-submit-output'), !count);
 		});
+	},
+
+	/**
+	 * Copies text to the clipboard and briefly confirms on the button
+	 */
+	copyToClipboard: async function(button, text) {
+		await navigator.clipboard.writeText(text);
+		let label = button.value;
+		button.value = Zotero.getString('general_copied');
+		setTimeout(() => button.value = label, 1500);
 	}
 };
 
 Zotero_Preferences.General = {
 	init: function() {
-
-		let elem = document.getElementById('intercept-and-import');
-		elem.style.display = null;
-		this.mimeTypeHandlingComponent = React.createElement(Zotero_Preferences.Components.MIMETypeHandling, null);
-		ReactDOM.render(this.mimeTypeHandlingComponent, elem.querySelectorAll('.group-content')[0]);
-
 		ReactDOM.render(React.createElement(Zotero_Preferences.Components.ClientStatus, null),
 			document.getElementById("client-status"));
-		document.getElementById("general-button-clear-credentials").onclick = Zotero_Preferences.General.clearCredentials;
 
-		Zotero.API.getUserInfo().then(Zotero_Preferences.General.updateAuthorization);
+		let shortcut = Zotero.isMac ? '⌘⇧S' : 'Ctrl+Shift+S';
+		document.getElementById('saving-how-to').innerHTML = Zotero.getString('preferences_saving_howTo',
+			`<kbd>${shortcut}</kbd>`);
 
-	},
+		document.getElementById("advanced-button-reset-translators").addEventListener('click', async (event) => {
+			event.target.value = Zotero.getString('preferences_translators_resetting');
+			try {
+				// Otherwise "Resetting translators..." flash-appears and it looks glitchy
+				await Promise.all([Zotero.Promise.delay(1000), (async () => {
+					await Zotero.Prefs.removeAllCachedTranslators();
+					return Zotero.Translators.updateFromRemote(true)
+				})()]);
+				event.target.value = Zotero.getString('preferences_translators_updated');
+			} catch (e) {
+				event.target.value = Zotero.getString('preferences_translators_updateFailed');
+			}
+		});
 
-	/**
-	 * Updates the "Authorization" group based on a username
-	 */
-	updateAuthorization: function(userInfo) {
-		document.getElementById('general-authorization-not-authorized').style.display = (userInfo ? 'none' : 'block');
-		document.getElementById('general-authorization-authorized').style.display = (!userInfo ? 'none' : 'block');
-		if(userInfo) {
-			document.getElementById('general-authorization-authorized-message').textContent
-					= Zotero.getString('preferences_onlineLibrary_authorized', [
-						ZOTERO_CONFIG.CLIENT_NAME, userInfo.username
-					]);
-		}
-	},
-
-	/**
-	 * Clears authorization
-	 */
-	clearCredentials: function() {
-		Zotero.API.clearCredentials();
-		Zotero_Preferences.General.updateAuthorization(null);
+		var openTranslatorTesterButton = document.getElementById("advanced-button-open-translator-tester");
+		if (openTranslatorTesterButton) openTranslatorTesterButton.onclick = Zotero_Preferences.General.openTranslatorTester;
 	},
 
 	/**
@@ -223,59 +229,33 @@ Zotero_Preferences.Advanced = {
 			function() { Zotero.Debug.setStore(this.checked); };
 		document.getElementById("advanced-checkbox-enable-at-startup").onchange =
 			function() { Zotero.Prefs.set('debug.store', this.checked); };
-		document.getElementById("advanced-checkbox-report-translator-failure").onchange =
-			function() { Zotero.Prefs.set('reportTranslationFailure', this.checked); };
 		document.getElementById("advanced-button-view-output").onclick = Zotero_Preferences.Advanced.viewDebugOutput;
 		document.getElementById("advanced-button-clear-output").onclick = Zotero_Preferences.Advanced.clearDebugOutput;
-		document.getElementById("advanced-button-submit-output").onclick = Zotero_Preferences.Advanced.submitDebugOutput;
-		document.getElementById("advanced-button-reset-translators").addEventListener('click', async (event) => { 
-			event.target.value = Zotero.getString('preferences_translators_resetting');
-			try {
-				// Otherwise "Resetting translators..." flash-appears and it looks glitchy
-				await Promise.all([Zotero.Promise.delay(1000), (async () => {
-					await Zotero.Prefs.removeAllCachedTranslators();
-					return Zotero.Translators.updateFromRemote(true)
-				})()]);
-				event.target.value = Zotero.getString('preferences_translators_updated');
-			} catch (e) {
-				event.target.value = Zotero.getString('preferences_translators_updateFailed');
-			}
-		});
-		document.getElementById("advanced-button-report-errors").onclick = Zotero_Preferences.Advanced.submitErrors;
+		document.getElementById("advanced-button-copy-output").onclick = async function() {
+			Zotero_Preferences.copyToClipboard(this, await Zotero.Connector_Debug.get());
+		};
+		document.getElementById("advanced-button-copy-errors").onclick = async function() {
+			let errors = await Zotero.Errors.getErrors();
+			let sysInfo = await Zotero.Errors.getSystemInfo();
+			Zotero_Preferences.copyToClipboard(this, `${errors.join('\n\n')}\n\n${sysInfo}`);
+		};
 
-		const googleDocsEnabledCheckbox = document.getElementById("advanced-checkbox-google-docs-enabled");
-		function onGoogleDocsEnabledChange() {
-			let inputs = document.querySelectorAll('#advanced-google-docs-subprefs input');
-			inputs.forEach(input => input.disabled = !googleDocsEnabledCheckbox.checked);
-		}
-		googleDocsEnabledCheckbox.addEventListener('change', onGoogleDocsEnabledChange);
-		setTimeout(() => onGoogleDocsEnabledChange.call(googleDocsEnabledCheckbox), 20);
-
-
-		var openTranslatorTesterButton = document.getElementById("advanced-button-open-translator-tester");
-		if (openTranslatorTesterButton) openTranslatorTesterButton.onclick = Zotero_Preferences.General.openTranslatorTester;
 		var testRunnerButton = document.getElementById("advanced-button-open-test-runner");
 		if (testRunnerButton) testRunnerButton.onclick = function() {
 			Zotero.Connector_Browser.openTab(Zotero.getExtensionURL(`test/test.html`));
 		};
 		document.getElementById("advanced-button-config-editor").onclick = function() {
-			let msg = "Changing these advanced settings can be harmful to the stability, security, "
-				+ "and performance of the browser and the Zotero Connector. You should only "
-				+ "proceed if you are sure of what you are doing.";
-			if (confirm(msg)) {
+			if (confirm(Zotero.getString('preferences_configEditor_description'))) {
 				Zotero.Connector_Browser.openConfigEditor();
 			}
 		};
-		
+
 		// get preference values
 		Zotero.Connector_Debug.storing(function(status) {
 			document.getElementById('advanced-checkbox-enable-logging').checked = !!status;
 		});
 		Zotero.Prefs.getAsync("debug.store").then(function(status) {
 			document.getElementById('advanced-checkbox-enable-at-startup').checked = !!status;
-		});
-		Zotero.Prefs.getAsync("reportTranslationFailure").then(function(status) {
-			document.getElementById('advanced-checkbox-report-translator-failure').checked = !!status;
 		});
 	},
 		
@@ -298,113 +278,86 @@ Zotero_Preferences.Advanced = {
 		Zotero_Preferences.refreshData();
 		var textarea = document.getElementById("advanced-textarea-debug");
 		textarea.style.display = 'none';
-	},
-
-	/**
-	 * Submits debug output to server.
-	 */
-	submitDebugOutput: async function() {
-		var submitOutputButton = document.getElementById('advanced-button-submit-output');
-		toggleDisabled(submitOutputButton, true);
-
-		// We have to request permissions within a user gesture (even though we use this in Zotero.getSystemInfo())
-		// Safari doesn't support the management permission
-		if (!Zotero.isDebug && !Zotero.isSafari) {
-			try {
-				await browser.permissions.request({permissions: ['management']});
-			} catch (e) {
-				Zotero.debug(`Management permission request failed: ${e.message || e}`);
-			}
-		}
-		
-		try {
-			let reportID = await Zotero.Connector_Debug.submitReport();
-			let result = await Zotero.ModalPrompt.confirm({
-				message: Zotero.getString('reports_debug_output_submitted', 'D' + reportID).replace(/\n/g, '<br/>'),
-				button1Text: Zotero.getString('general_ok'),
-				button2Text: !Zotero.isSafari ? Zotero.getString("general_copyToClipboard") : "",
-			});
-			if (result.button == 2) {
-				navigator.clipboard.writeText('D' + reportID);
-			}
-		}
-		catch (e) {
-			alert(Zotero.getString("reports_submission_failed", e.message));
-		}
-		finally {
-			toggleDisabled(submitOutputButton, false);
-		}
-	},
-
-	/**
-	 * Submits an error report
-	 */
-	submitErrors: async function() {
-		var reportErrorsButton = document.getElementById('advanced-button-report-errors');
-		toggleDisabled(reportErrorsButton, true);
-		
-		// We have to request permissions within a user gesture (even though we use this in Zotero.getSystemInfo())
-		// Safari doesn't support the management permission
-		if (!Zotero.isDebug && !Zotero.isSafari) {
-			try {
-				await browser.permissions.request({permissions: ['management']});
-			} catch (e) {
-				Zotero.debug(`Management permission request failed: ${e.message || e}`);
-			}
-		}
-		
-		try {
-			var reportID = await Zotero.Errors.sendErrorReport();
-			let result = await Zotero.ModalPrompt.confirm({
-				message: Zotero.getString('reports_report_submitted', reportID).replace(/\n/g, '<br/>'),
-				button1Text: Zotero.getString('general_ok'),
-				button2Text: !Zotero.isSafari ? Zotero.getString("general_copyToClipboard") : "",
-			});
-			if (result.button == 2) {
-				navigator.clipboard.writeText(reportID);
-			}
-		} catch(e) {
-			alert(Zotero.getString("reports_submission_failed", e.message));
-		} finally {
-			toggleDisabled(reportErrorsButton, false);
-		}
 	}
 };
 
 Zotero_Preferences.Components = {};
 
+/**
+ * Desktop connection status. Distinguishes "app not running" from "app running but this
+ * browser isn't connected yet", which the plain ping check cannot.
+ */
 Zotero_Preferences.Components.ClientStatus = class ClientStatus extends React.Component {
 	constructor(props) {
 		super(props);
-		this.state = {
-			available: false
-		};
-		
+		this.state = { state: 'checking', checking: true };
 		this.checkStatus = this.checkStatus.bind(this);
+		this.onConnectionChanged = this.onConnectionChanged.bind(this);
 		// Run the initial status check only after the pane's host-permission prompt has been
 		// dismissed, so the request cannot trigger Safari's native permission dialog while the
 		// explanation is still displayed
 		Zotero_Preferences.permissionsPromptDeferred.promise.then(this.checkStatus);
 	}
-	
-	checkStatus() {
-		// The preferences pane explains missing localhost access in its combined permission
-		// prompt, so don't show another one here. The request itself still triggers Safari's
-		// native permission dialog where possible.
-		return Zotero.Connector.checkIsOnline({active: true, permissionPromptShown: true}).then(function(status) {
-			this.setState({available: status});
-		}.bind(this));
+
+	componentDidMount() {
+		// Connect/disconnect buttons (pairing-settings.js) report their outcome here
+		document.addEventListener('abstractus-connection-changed', this.onConnectionChanged);
+		this.timer = window.setInterval(() => { if (!document.hidden) this.checkStatus(); }, 5000);
 	}
-	
+
+	componentWillUnmount() {
+		document.removeEventListener('abstractus-connection-changed', this.onConnectionChanged);
+		window.clearInterval(this.timer);
+	}
+
+	componentDidUpdate() {
+		let actions = document.getElementById('connect-actions');
+		if (actions) actions.dataset.state = this.state.state;
+	}
+
+	onConnectionChanged(event) {
+		this.setState(this.fromResult(event.detail));
+	}
+
+	fromResult(result) {
+		return { state: result.connected ? 'connected' : (result.state || 'unverified'), checking: false };
+	}
+
+	async checkStatus() {
+		this.setState({checking: true});
+		try {
+			// The pairing credential lives in the background page; only it can verify the desktop
+			let result = await browser.runtime.sendMessage({type: 'abstractus-pair', action: 'status'});
+			this.setState(this.fromResult(result));
+		}
+		catch (e) {
+			this.setState({state: 'offline', checking: false});
+		}
+	}
+
 	render() {
-		let status = this.state.available
-			? Zotero.getString('preferences_zoteroStatus_available', ZOTERO_CONFIG.CLIENT_NAME)
-			: Zotero.getString('preferences_zoteroStatus_unavailable',
-				[ZOTERO_CONFIG.CLIENT_NAME,
-					'https://www.zotero.org/support/kb/connector_zotero_unavailable']);
-		return (<div>
-			<p dangerouslySetInnerHTML={{__html: status}}/>
-			<p><input type="button" value={Zotero.getString('preferences_zoteroStatus_update')} onClick={this.checkStatus}/></p>
+		let clientName = ZOTERO_CONFIG.CLIENT_NAME;
+		let copy = {
+			checking: ['is-checking', Zotero.getString('general_pleaseWait'), ''],
+			connected: ['is-online', 'Connected',
+				`${clientName} Desktop is running and this browser is connected. Papers you save go straight to your Library.`],
+			pairing_required: ['is-warning', 'Not connected',
+				`${clientName} Desktop is running. Connect this browser once to start saving.`],
+			unverified: ['is-warning', 'Reconnect needed',
+				`This browser's connection could not be verified. Disconnect it, then connect again.`],
+			desktop_update_required: ['is-warning', 'Update needed',
+				`The app answering on the desktop port doesn't support secure browser connections. Update ${clientName} Desktop.`],
+			offline: ['', 'Not running',
+				`${clientName} Desktop isn't reachable. Open the app, then check again.`]
+		};
+		let [pillClass, pillText, description] = copy[this.state.state] || copy.unverified;
+		return (<div className="status">
+			<div className="status-text">
+				<span className={`status-pill ${pillClass}`} role="status">{pillText}</span>
+				<p>{description}</p>
+			</div>
+			<input type="button" className="button" value={Zotero.getString('preferences_zoteroStatus_update')}
+				onClick={this.checkStatus} disabled={this.state.checking}/>
 		</div>)
 	}
 };
@@ -430,10 +383,8 @@ Zotero_Preferences.Components.ProxySettings = class ProxySettings extends React.
 				<div className="group">
 					<div className="group-title">{Zotero.getString('preferences_proxySettings')}</div>
 					<div className="group-content">
-						<p dangerouslySetInnerHTML={{__html: Zotero.getString(
-							'preferences_proxySettings_description',
-							[ZOTERO_CONFIG.CLIENT_NAME,
-								'https://www.zotero.org/support/connector_preferences#proxies'])
+						<p className="muted" dangerouslySetInnerHTML={{__html: Zotero.getString(
+							'preferences_proxySettings_description', ZOTERO_CONFIG.CLIENT_NAME)
 						}}/>
 						<Zotero_Preferences.Components.ProxyPreferences onTransparentChange={this.handleTransparentChange}/>
 					</div>
@@ -807,184 +758,5 @@ Zotero_Preferences.Components.Proxies = function Proxies(props) {
 	);
 };
 
-
-Zotero_Preferences.Components.MIMETypeHandling = class MIMETypeHandling extends React.Component {
-	constructor(props) {
-		super(props);
-		this.state = {
-			enabled: Zotero.Prefs.get('interceptKnownFileTypes'),
-			hosts: Zotero.Prefs.get('allowedInterceptHosts'),
-			currentHostIdx: -1
-		};
-		
-		this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
-		this.handleSelectChange = this.handleSelectChange.bind(this);
-		this.handleHostnameChange = this.handleHostnameChange.bind(this);
-		this.handleHostRemove = this.handleHostRemove.bind(this);
-	}
-
-	componentWillMount() {
-		this.updateHosts = Zotero.Utilities.debounce(this.updateHosts, 200);
-	}
-	
-	handleCheckboxChange(event) {
-		const isEnabled = event.target.checked;
-		Zotero.Prefs.set('interceptKnownFileTypes', isEnabled);
-		this.setState({enabled: isEnabled});
-		if (isEnabled) {
-			Zotero.ContentTypeHandler.enable();
-		} else {
-			Zotero.ContentTypeHandler.disable();
-		}
-	}
-	
-	handleSelectChange(event) {
-		this.setState({
-			currentHostIdx: event.target.value !== "" ? event.target.value : -1
-		});
-	}
-	
-	handleHostnameChange(event) {
-		this.state.hosts[this.state.currentHostIdx] = event.target.value;
-		this.updateHosts(this.state.hosts);
-	}
-	
-	handleHostRemove() {
-		this.setState((prevState) => {
-			var newState = {
-				hosts: [
-					...prevState.hosts.slice(0, this.state.currentHostIdx),
-					...prevState.hosts.slice(this.state.currentHostIdx + 1)
-				],
-				currentHostIdx: -1
-			};
-			this.updateHosts(newState.hosts)
-			return newState;
-		});
-	}
-	
-	updateHosts(hosts) {
-		this.setState({hosts});
-		Zotero.Prefs.set('allowedInterceptHosts', hosts);
-	}
-	
-	render() {
-		var hosts;
-		if (this.state.hosts.length) {
-			hosts = this.state.hosts.map((h, i) => <option value={i} key={i}>{h}</option>);
-		} else {
-			hosts = null;
-		}
-		let hostname = '';
-		if (this.state.currentHostIdx != -1) {
-			hostname = <p style={{display: this.state.currentHostIdx === -1 ? 'none' : 'flex'}}>
-				<label style={{alignSelf: 'center'}}>{Zotero.getString('preferences_proxySettings_hostname')} </label>
-				<input style={{flexGrow: '1'}} type="text" defaultValue={this.state.hosts[this.state.currentHostIdx] || ''} onChange={this.handleHostnameChange}/>
-			</p>
-		}
-		
-		var disabled = this.state.currentHostIdx == -1;
-		
-		return (
-			<div>
-				<p>{Zotero.getString('preferences_fileImporting_clientRequired', ZOTERO_CONFIG.CLIENT_NAME)}</p>
-				<p>
-					<label><input type="checkbox" onChange={this.handleCheckboxChange} name="enabled" defaultChecked={this.state.enabled}/>&nbsp;{Zotero.getString('preferences_fileImporting_enable', ZOTERO_CONFIG.CLIENT_NAME)}</label>
-				</p>
-				<div style={{display: this.state.enabled ? 'flex' : 'none', flexDirection: "column", marginTop: "10px"}}>
-					<label>{Zotero.getString('preferences_fileImporting_hostnames')}</label>
-					<select className="Preferences-MIMETypeHandling-hostSelect" size="8" multiple
-							value={this.state.currentHostIdx}
-							onChange={this.handleSelectChange}>
-						{hosts}
-					</select>
-					<p> <input style={{minWidth: "80px", marginRight: "10px"}} type="button" onClick={this.handleHostRemove} disabled={disabled} value={Zotero.getString('preferences_fileImporting_remove')}/> </p>
-					{hostname}
-				</div>
-
-			</div>
-		);
-	}
-};
-
-
-
-// Customized built-in web component: <input is="shortcut-input">
-class ShortcutInput extends HTMLInputElement {
-	constructor() {
-		super();
-		this._connected = false;
-		this._keys = ['ctrlKey', 'altKey', 'shiftKey', 'metaKey'];
-	}
-
-	async connectedCallback() {
-		if (this._connected) return;
-		this._connected = true;
-		this.setAttribute('autocomplete', 'off');
-		this.setAttribute('spellcheck', 'false');
-		this.addEventListener('keydown', this._handleKeyDown);
-		this.addEventListener('blur', this._handleBlur);
-		await Zotero.initDeferred.promise;
-		await this._updateFromPref();
-	}
-
-	disconnectedCallback() {
-		this.removeEventListener('keydown', this._handleKeyDown);
-		this.removeEventListener('blur', this._handleBlur);
-		this._connected = false;
-	}
-
-	get _prefName() {
-		return this.dataset.pref;
-	}
-
-	async _updateFromPref() {
-		let modifiers = await Zotero.Prefs.getAsync(this._prefName) || {};
-		this.value = Zotero.Utilities.Connector.kbEventToShortcutString(modifiers);
-		this.classList.remove('invalid');
-	}
-
-	_handleKeyDown = async (e) => {
-		if (e.key == 'Tab') return;
-		e.preventDefault();
-		let modifiers = {};
-		let invalid = false;
-		for (let key of this._keys) {
-			modifiers[key] = e[key];
-		}
-		if (e.key.length == 1) {
-			modifiers.key = e.key;
-		} else {
-			modifiers.key = '';
-		}
-		if (e.key == 'Backspace' || e.key == 'Escape' || e.key == 'Delete') {
-			Zotero.Prefs.clear(this._prefName);
-			await this._updateFromPref();
-			return;
-		}
-		if (modifiers.key && this._keys.some(k => modifiers[k])) {
-			Zotero.Prefs.set(this._prefName, modifiers);
-		} else {
-			invalid = true;
-		}
-		this.value = Zotero.Utilities.Connector.kbEventToShortcutString(modifiers);
-		if (invalid) {
-			this.classList.add('invalid');
-		} else {
-			this.classList.remove('invalid');
-		}
-	}
-
-	_handleBlur = async () => {
-		let saved = await Zotero.Prefs.getAsync(this._prefName) || {};
-		if (!saved.key || !this._keys.some(k => saved[k])) {
-			await this._updateFromPref();
-		}
-	}
-}
-
-try {
-	customElements.define('shortcut-input', ShortcutInput, { extends: 'input' });
-} catch (e) {}
 
 window.addEventListener("load", Zotero_Preferences.init, false);

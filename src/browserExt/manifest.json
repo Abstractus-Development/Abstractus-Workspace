@@ -1,23 +1,23 @@
 {
-	"name": "Zotero Connector",
+	"name": "Abstractus Connector",
 	"manifest_version": 2,
 	"version": "AUTOFILLED",
 	"description": "__MSG_extension_description__",
 	"default_locale": "en",
 	"browser_action": {
 		"default_icon": {
-			"16": "images/treeitem-webpage-gray.png",
-			"32": "images/treeitem-webpage-gray@2x.png",
-			"48": "images/treeitem-webpage-gray@48px.png"
+			"16": "Icon-16.png",
+			"32": "Icon-32.png",
+			"48": "Icon-48.png"
 		},
 		"default_title": "__MSG_extension_defaultTitle__"
 	},
 	"permissions": [
-		"http://127.0.0.1/*", "https://repo.zotero.org/*", "https://api.zotero.org/*", "http://*/*", "https://*/*",
+		"http://127.0.0.1/*", "https://repo.zotero.org/*", "http://*/*", "https://*/*",
 		"tabs", "contextMenus", "cookies", "storage", "scripting",
 		"webRequest", "webRequestBlocking", "webNavigation", "declarativeNetRequest"
 	],
-	"optional_permissions": ["management", "clipboardWrite"],
+	"optional_permissions": ["clipboardWrite", "nativeMessaging"],
 	"background": {
 		"scripts": [
 			/*BACKGROUND SCRIPTS*/,
@@ -29,23 +29,6 @@
 			"matches": ["http://*/*", "https://*/*"],
 			"run_at": "document_start",
 			"js": [/*INJECT SCRIPTS*/]
-		},
-		{
-			"matches": ["https://docs.google.com/document/*"],
-			"run_at": "document_start",
-			"js": [
-				"zotero-google-docs-integration/kixAddZoteroMenu.js"
-			]
-		},
-		{
-			"matches": ["https://docs.google.com/document/*"],
-			"run_at": "document_end",
-			"js": [
-				"zotero-google-docs-integration/googleDocs.js",
-				"zotero-google-docs-integration/client.js",
-				"zotero-google-docs-integration/clientAppsScript.js",
-				"zotero-google-docs-integration/document.js"
-			]
 		}
 	],
 	"web_accessible_resources": [
@@ -60,10 +43,11 @@
 		"itemSaver.js"
 	],
 	"content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
-	"homepage_url": "https://www.zotero.org/",
+	"homepage_url": "https://www.abstractus.ai/",
 	"icons": {
 		"16": "Icon-16.png",
 		"32": "Icon-32.png",
+		"48": "Icon-48.png",
 		"64": "Icon-64.png",
 		"128": "Icon-128.png"
 	},
@@ -81,9 +65,8 @@
 	"minimum_chrome_version": "55",
 	"applications": {
 		"gecko": {
-			"id": "zotero@chnm.gmu.edu",
-			"update_url": "https://zotero.org/AUTOFILLED",
-			"strict_min_version": "58.0"
+			"id": "connector@abstractus.ai",
+			"strict_min_version": "109.0"
 		}
 	}
 }

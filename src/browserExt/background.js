@@ -1,4 +1,4 @@
-﻿/*
+/*
     ***** BEGIN LICENSE BLOCK *****
     
     Copyright © 2009-2012 Center for History and New Media
@@ -28,6 +28,8 @@ if (!Zotero.isManifestV3) {
 }
 
 Zotero.Connector_Browser = new function() {
+	// Keep our identity visible on publisher pages; item type remains in the tooltip and save popup.
+	const abstractusToolbarIcon = {16: 'images/zotero-new-z-16px.png', 32: 'images/zotero-new-z-16px@2x.png'};
 	var _tabInfo = {};
 	var _tabInjections = {};
 	var _incompatibleVersionMessageShown;
@@ -253,16 +255,21 @@ Zotero.Connector_Browser = new function() {
 	 * @param frameURL
 	 * @param tabId
 	 */
-	this.onPDFFrame = function(frameURL, frameId, tabId) {
+	this.onPDFFrame = async function(frameURL, frameId, tabId) {
+		if (!Number.isInteger(tabId) || tabId < 0 || !Number.isInteger(frameId) || frameId <= 0) return;
+		let tab, frame;
+		try {
+			tab = await browser.tabs.get(tabId);
+			frame = await browser.webNavigation.getFrame({tabId, frameId});
+		} catch { return; } // Tabs/frames can disappear after their response headers arrive.
+		if (!frame?.url || frame.url.split('#')[0] !== frameURL.split('#')[0]) return;
 		let tabInfo = this.getTabInfo(tabId);
-		if (tabInfo.translators && tabInfo.translators.length) {
-			return;
-		}
-		browser.tabs.get(tabId).then(function(tab) {
-			_tabInfo[tab.id] = Object.assign(_tabInfo[tab.id] || {}, {translators: [], isPDF: true, frameId});
-			Zotero.Connector_Browser.injectTranslationScripts(tab, frameId, frameURL);
-			Zotero.Connector_Browser._updateExtensionUI(tab);
-		});
+		if (tabInfo.translators && tabInfo.translators.length) return;
+		_tabInfo[tab.id] = Object.assign(_tabInfo[tab.id] || {}, {translators: [], isPDF: true, frameId});
+		try {
+			await Zotero.Connector_Browser.injectTranslationScripts(tab, frameId, frameURL);
+			await Zotero.Connector_Browser._updateExtensionUI(tab);
+		} catch (error) { Zotero.logError(error); }
 	}
 	
 	/**
@@ -294,18 +301,10 @@ Zotero.Connector_Browser = new function() {
 	}
 	
 	/**
-	 * Called when Zotero goes online or offline
+	 * Called when Abstractus Desktop goes online or offline
 	 * @param [String|Boolean] version - either `false` or version string from X-Zotero-Version header
 	 */
-	this.onStateChange = function(version) {
-		if (version) {
-			Zotero.Prefs.set('firstSaveToServer', true);
-			// TODO: Enable once 5.0 is out, so that ContentTypeHandlers show an upgradeClient message instead
-			parseInt(version) >= 5 && Zotero.ContentTypeHandler.enable();
-		} else {
-			Zotero.ContentTypeHandler.disable();
-		}
-	}
+	this.onStateChange = function(version) {}
 	
 	this.onTabActivated = function(tab) {
 		Zotero.Connector_Browser._updateExtensionUI(tab);
@@ -332,15 +331,10 @@ Zotero.Connector_Browser = new function() {
 	 * Called if Zotero version is determined to be incompatible with Standalone
 	 */
 	this.newerVersionRequiredPrompt = function() {
-		let clientName = ZOTERO_CONFIG.CLIENT_NAME;
-		let url = ZOTERO_CONFIG.CLIENT_DOWNLOAD_URL;
-		let pageName = Zotero.getString('progressWindow_error_upgradeClient_latestVersion');
-		let pageLink = `<a href="${url}">${pageName}</a>`;
-		
 		return Zotero.Messaging.sendMessage('confirm', {
 			title: Zotero.getString("general_warning"),
 			button2Text: "",
-			message: Zotero.getString("progressWindow_error_upgradeClient", [clientName, pageLink])
+			message: Zotero.getString("progressWindow_error_upgradeClient", ZOTERO_CONFIG.CLIENT_NAME)
 		});
 	}
 
@@ -620,6 +614,11 @@ Zotero.Connector_Browser = new function() {
 	};
 	
 	this.openPreferences = function(paneID, tab) {
+		// Called without a pane from injected scripts, in which case the tab arrives first
+		if (typeof paneID !== 'string') {
+			tab = paneID;
+			paneID = 'general';
+		}
 		this.openTab(browser.runtime.getURL(`preferences/preferences.html#${paneID}`), tab);
 	};
 	
@@ -731,6 +730,7 @@ Zotero.Connector_Browser = new function() {
 		var showSaveMenu = (translators && translators.length) || !isPDF;
 		let unproxiedURL = Zotero.Proxies.proxyToProper(url, true);
 		var showProxyMenu = !isPDF
+			&& Zotero.Proxies.transparent
 			&& Zotero.Proxies.proxies.length > 0
 			// Don't show proxy menu if already proxied
 			&& !unproxiedURL;
@@ -783,7 +783,8 @@ Zotero.Connector_Browser = new function() {
 				tab,
 				0,
 				{
-					note: '<blockquote>' + info.selectionText + '</blockquote>'
+					// Selected text is data, not markup
+					note: '<blockquote>' + Zotero.Utilities.htmlSpecialChars(info.selectionText) + '</blockquote>'
 				}
 			);
 		},
@@ -899,13 +900,9 @@ Zotero.Connector_Browser = new function() {
 	}
 
 	function _showTranslatorIcon(tab, translator) {
-		var itemType = translator.itemType;
-
 		browser.action.setIcon({
 			tabId:tab.id,
-			path:(itemType === "multiple"
-				? "images/treesource-collection.png"
-				: Zotero.ItemTypes.getImageSrc(itemType))
+			path: abstractusToolbarIcon
 		});
 
 		browser.action.setTitle({
@@ -917,7 +914,7 @@ Zotero.Connector_Browser = new function() {
 	function _showWebpageIcon(tab) {
 		browser.action.setIcon({
 			tabId: tab.id,
-			path: Zotero.ItemTypes.getImageSrc("webpage-gray")
+			path: abstractusToolbarIcon
 		});
 		let withSnapshot = Zotero.Connector.isOnline ? Zotero.Connector.prefs.automaticSnapshots :
 			Zotero.Prefs.get('automaticSnapshots');
@@ -930,7 +927,7 @@ Zotero.Connector_Browser = new function() {
 	this._showPDFIcon = function(tab) {
 		browser.action.setIcon({
 			tabId: tab.id,
-			path: browser.runtime.getURL('images/pdf.png')
+			path: abstractusToolbarIcon
 		});
 		browser.action.setTitle({
 			tabId: tab.id,
@@ -973,11 +970,11 @@ Zotero.Connector_Browser = new function() {
 			parentId: parentID,
 			contexts: ['page', ...buttonContext]
 		}));
-		// Swap order if automatic snapshots disabled
+		// Abstractus: only offer "with Snapshot" when the desktop app stores snapshots
 		let withSnapshot = Zotero.Connector.isOnline ? Zotero.Connector.prefs.automaticSnapshots :
 			Zotero.Prefs.get('automaticSnapshots');
 		if (!withSnapshot) {
-			fns = [fns[1], fns[0]];
+			fns = [fns[1]];
 		}
 		fns.forEach((fn) => fn());
 	}
@@ -1140,6 +1137,11 @@ Zotero.Connector_Browser = new function() {
 	}
 
 	async function _browserAction(tab) {
+        const connection = await Zotero.Connector.getConnectionState();
+        if (connection.state === 'pairing_required') {
+            await browser.windows.create({url:browser.runtime.getURL('preferences/connect.html'),type:'popup',width:480,height:560,focused:true});
+            return;
+        }
 		const shouldContinue = await Zotero.HostPermissions.checkChromiumActionPermissions(tab);
 		if (!shouldContinue) {
 			return;
