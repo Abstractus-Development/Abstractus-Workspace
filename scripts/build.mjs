@@ -227,8 +227,14 @@ if (ZIP) {
 		const file = path.join(DIST, `Abstractus_Connector-${name}-${VERSION}.zip`);
 		rm(file);
 		const dir = path.join(BUILD, browser);
+		// Windows ships bsdtar (libarchive) as System32\tar.exe, the only tar here that can
+		// write a zip. Call it by full path: a PATH lookup finds Git for Windows' GNU tar
+		// first in a Git Bash shell, and GNU tar cannot create zip archives at all — it also
+		// reads the "C:" of an absolute archive path as a remote host and fails with
+		// "tar: Cannot connect to C: resolve failed".
+		const bsdtar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 		const result = process.platform === 'win32'
-			? spawnSync('tar.exe', ['-a', '-c', '-f', file, '*'], { cwd: dir, stdio: 'inherit', shell: true })
+			? spawnSync(bsdtar, ['-a', '-c', '-f', file, '*'], { cwd: dir, stdio: 'inherit', shell: true })
 			: spawnSync('zip', ['-qr', file, '.'], { cwd: dir, stdio: 'inherit' });
 		if (result.status !== 0) fail(`Packaging ${browser} failed`);
 		console.log(`Packaged ${path.relative(ROOT, file)}`);
