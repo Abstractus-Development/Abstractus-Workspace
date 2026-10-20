@@ -1,6 +1,6 @@
 {
   "name": "abstractus-connector",
-  "version": "5.0.209",
+  "version": "5.0.210",
   "private": true,
   "description": "Browser connector for Abstractus Desktop, based on the Zotero Connector",
   "license": "AGPL-3.0-or-later",
@@ -31,6 +31,7 @@
     "semver": "^7.8.5",
     "single-file-core": "1.5.98",
     "sinon": "^22.1.0",
+    "terser": "5.50.0",
     "through2": "^2.0.5",
     "yargs": "^17.7.3"
   },

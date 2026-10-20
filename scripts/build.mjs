@@ -77,6 +77,36 @@ function walk(dir, fn) {
 	}
 }
 
+// Release builds ship without comments: JavaScript is minified (function and class names kept,
+// which the code relies on), CSS and HTML lose their comments. The license is in COPYING.
+async function minifyTree(dir) {
+	const { minify } = await import('terser');
+	const files = [];
+	// lib/ holds third-party builds that are already minified and must keep their license notices.
+	walk(dir, (p) => path.relative(dir, p).split(path.sep)[0] !== 'lib' && files.push(p));
+	for (const p of files) {
+		if (p.endsWith('.js') || p.endsWith('.mjs')) {
+			const result = await minify(fs.readFileSync(p, 'utf8'), {
+				module: p.endsWith('.mjs'),
+				compress: true,
+				mangle: true,
+				keep_fnames: true,
+				keep_classnames: true,
+				// ascii_only keeps escaped Unicode (e.g. surrogate ranges in regular expressions) escaped:
+				// written raw they are not valid UTF-8, and the browser refuses to load the file.
+				format: { comments: false, ascii_only: true },
+			});
+			fs.writeFileSync(p, result.code);
+		}
+		else if (p.endsWith('.css')) {
+			fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\n\s*\n/g, '\n'));
+		}
+		else if (p.endsWith('.html')) {
+			fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/<!--[\s\S]*?-->/g, ''));
+		}
+	}
+}
+
 function requirePath(p, hint) {
 	if (!fs.existsSync(p)) fail(`${path.relative(ROOT, p)} is missing. ${hint}`);
 }
@@ -217,6 +247,7 @@ for (const browser of ['manifestv3', 'firefox']) {
 
 	if (!DEBUG) {
 		rm(path.join(dir, 'test'));
+		await minifyTree(dir);
 	}
 }
 
