@@ -77,7 +77,7 @@ if (isTopWindow) {
 
 		zoteroFrame = new Zotero.Frame({
 			id: frameID,
-			src: frameSrc
+			src: Zotero.Utilities.Connector.themedFrameURL(frameSrc, document)
 		}, {
 			position: 'fixed',
 			top: '0px',

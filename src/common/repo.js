@@ -65,7 +65,7 @@ Zotero.Repo = new function() {
 		// Don't fetch from repo in debug mode
 		if (!code && !debugMode) {
 			// then try repo
-			const url = `${ZOTERO_CONFIG.REPOSITORY_URL}code/${translatorID}?version=${Zotero.version}`;
+			const url = `${ZOTERO_CONFIG.REPOSITORY_URL}code/${translatorID}?version=${ZOTERO_CONFIG.REPOSITORY_CLIENT_VERSION}`;
 			try {
 				await checkRepositoryAccess();
 				let xhr = await Zotero.HTTP.request("GET", url);
@@ -118,7 +118,7 @@ Zotero.Repo = new function() {
 	 * @param reset {Boolean} When false only retrieves updates since last repo check
 	 */
 	this.getTranslatorMetadataFromServer = async function(reset=false) {
-		var url = ZOTERO_CONFIG.REPOSITORY_URL + "metadata?version=" + Zotero.version + "&last="+
+		var url = ZOTERO_CONFIG.REPOSITORY_URL + "metadata?version=" + ZOTERO_CONFIG.REPOSITORY_CLIENT_VERSION + "&last="+
 				(reset ? "0" : Zotero.Prefs.get("connector.repo.lastCheck.repoTime"));
 
 		await checkRepositoryAccess();

@@ -35,6 +35,10 @@ Zotero.OffscreenSandbox = {
 			await this.initMessaging(serviceWorkerPort);
 			this.sendMessage('offscreen-sandbox-initialized');
 			Zotero.debug('OffscreenSandbox: reinitialized');
+			// Without this the reinit path fell through and set up messaging a second time,
+			// leaving a stale one-shot handler that swallowed the next real message — a save
+			// that then hung forever with the progress window open and no error.
+			return;
 		}
 		this.initialized = true;
 

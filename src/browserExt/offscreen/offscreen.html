@@ -30,6 +30,8 @@
 </head>
 <body>
 <script src="./offscreen.js"></script>
-<iframe src="./offscreenSandbox.html"></iframe>
+<!-- The manifest already sandboxes this page; the attribute keeps that true even if the
+     manifest entry is ever lost, and denies forms, popups and navigation from translator code. -->
+<iframe src="./offscreenSandbox.html" sandbox="allow-scripts"></iframe>
 </body>
 </html>

@@ -69,7 +69,8 @@ Zotero.BotBypass.isUrlWhitelisted = function(url) {
 	let proxies = Object.entries(Zotero.Proxies.getPotentialProxies(url));
 	for (let [url, _] of proxies) {
 		const hostname = new URL(url).hostname;
-		if (BOT_BYPASS_WHITELISTED_DOMAINS.some(domain => hostname.endsWith(domain))) {
+		// Exact host or a subdomain of it; "evilsciencedirect.com" must not qualify
+		if (BOT_BYPASS_WHITELISTED_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
 			return true;
 		}
 	}

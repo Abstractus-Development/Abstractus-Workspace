@@ -31,7 +31,7 @@ Zotero.Connector = new function() {
 	this.isOnline = (Zotero.isSafari || Zotero.isFirefox) ? false : null;
 	this.clientVersion = '';
 	this.prefs = {
-		reportActiveURL: true
+		reportActiveURL: false
 	};
 	
 	/**
@@ -50,7 +50,7 @@ Zotero.Connector = new function() {
 			await this.ping({}, {active, permissionPromptShown}, tab);
 			return true;
 		} catch (e) {
-			if (e.status != 0) {
+			if (typeof e.status === 'number' && e.status > 0) {
 				Zotero.debug("Checking if Zotero is online returned a non-zero HTTP status.");
 				Zotero.logError(e);
 				return true;
@@ -75,9 +75,11 @@ Zotero.Connector = new function() {
 		}
 	};
 	
+	// Safe diagnostics only; credentials remain in the background transport.
+	this.getConnectionState = () => Zotero.AbstractusTransport.getConnectionState();
+
 	this.onStateChange = function(version) {
 		Zotero.Connector_Browser?.onStateChange(version);
-		Zotero.UpdaterFix?.onStateChange(version);
 	}
 
 	this.reportActiveURL = function(url) {
@@ -102,8 +104,6 @@ Zotero.Connector = new function() {
 			'downloadAssociatedFiles',
 			'reportActiveURL',
 			'automaticSnapshots',
-			'googleDocsAddAnnotationEnabled',
-			'googleDocsCitationExplorerEnabled',
 			'supportsTagsAutocomplete',
 			'canUserAddNote'
 		];
@@ -217,7 +217,7 @@ Zotero.Connector = new function() {
 		options = { body: data, headers, successCodes: false, timeout };
 		let httpMethod = data === null ? "GET" : "POST";
 		try {
-			const xhr = await Zotero.HTTP.request(httpMethod, uri, options);
+			const xhr = await Zotero.AbstractusTransport.request(httpMethod, uri, options);
 			Zotero.Connector.clientVersion = xhr.getResponseHeader('X-Zotero-Version');
 			if (Zotero.Connector.isOnline !== true) {
 				Zotero.Connector.isOnline = true;
@@ -232,8 +232,8 @@ Zotero.Connector = new function() {
 					val = xhr.responseText;
 				}
 			}
-			// Zotero error responses bear an identifying header. If it's missing, treat the
-			// response like a connection failure so existing save flows show their "Is Zotero
+			// Abstractus Desktop error responses bear an identifying header. If it's missing, treat the
+			// response like a connection failure so existing save flows show their "Is Abstractus
 			// Running?" prompt instead of reporting an error from an unrelated localhost server.
 			if (xhr.status === 0 || (xhr.status >= 400
 					&& !xhr.getResponseHeader('X-Zotero-Version'))) {
@@ -264,14 +264,17 @@ Zotero.Connector = new function() {
 					&& !await browser.permissions.contains({origins: ["http://127.0.0.1/*"]})) {
 				Zotero.HostPermissions.localhostRequestBlocked = true;
 			}
-			if (!(e instanceof Zotero.Connector.CommunicationError) && !(e instanceof Zotero.HTTP.StatusError)){
+			if (e.name === 'AbstractusConnectionError') {
+				if (this.isOnline !== false) {
+					this.isOnline = false;
+					this.onStateChange(this.clientVersion);
+				}
+			}
+			else if (!(e instanceof Zotero.Connector.CommunicationError) && !(e instanceof Zotero.HTTP.StatusError)){
 				// Unexpected error, including a timeout
 				Zotero.logError(e);
 			}
 			throw e;
-		}
-		finally {
-			this._handleIntegrationTabClosed(method, tab);
 		}
 	},
 	
@@ -284,43 +287,6 @@ Zotero.Connector = new function() {
 	 */
 	this.saveSingleFile = async function(options, data) {
 		return this.callMethod(options, data);
-	}
-
-	/**
-	 * If running an integration method check if the tab is still available to receive
-	 * a response from Zotero and if not - respond with an error message so that
-	 * the integration operation can be discarded in Zotero
-	 */
-	this._handleIntegrationTabClosed = async function(method, tab) {
-		if (tab && method.startsWith('document/')) {
-			try {
-				let retrievedTab = await browser.tabs.get(tab.id);
-				if (retrievedTab.discarded) throw new Error('Integration tab is discarded');
-			} catch (e) {
-				Zotero.logError(e);
-				let response = await Zotero.Connector.callMethod({method: 'document/respond', timeout: false},
-					JSON.stringify({
-						error: 'Tab Not Available Error',
-						message: e.message,
-						stack: e.stack
-					})
-				);
-				let method = response.command.split('.')[1];
-				while (method != 'complete') {
-					let response;
-					if (method == 'displayAlert') {
-						// Need to return an error for displayAlert so that it can be displayed in the client.
-						response = await Zotero.Connector.callMethod({method: 'document/respond', timeout: false},
-							JSON.stringify({error: 'Error'})
-						);
-					}
-					else {
-						response = await Zotero.Connector.callMethod({method: 'document/respond', timeout: false}, "");
-					}
-					method = response.command.split('.')[1];
-				}
-			}
-		}
 	}
 }
 
@@ -353,30 +319,4 @@ Zotero.Connector_Debug = new function() {
 	this.count = function() {
 		return Zotero.Debug.count();
 	}
-	
-	/**
-	 * Submit data to the server
-	 */
-	this.submitReport = async function() {
-		let body = await Zotero.Debug.get();
-		let sysInfo = JSON.parse(await Zotero.Errors.getSystemInfo());
-		let errors = (await Zotero.Errors.getErrors()).join('\n');
-		sysInfo.timestamp = new Date().toString();
-		body = `${errors}\n\n${JSON.stringify(sysInfo, null, 2)}\n\n${body}`;
-		let xmlhttp = await Zotero.HTTP.request("POST", ZOTERO_CONFIG.REPOSITORY_URL + "report?debug=1", {body});
-
-		let responseXML;
-		try {
-			let parser = new DOMParser();
-			responseXML = parser.parseFromString(xmlhttp.responseText, "text/xml");
-		}
-		catch (e) {
-			throw new Error('Invalid response from server');
-		}
-		var reported = responseXML.getElementsByTagName('reported');
-		if (reported.length != 1) {
-			throw new Error('The server returned an error. Please try again.');
-		}
-		return reported[0].getAttribute('reportID');
-	};
 }

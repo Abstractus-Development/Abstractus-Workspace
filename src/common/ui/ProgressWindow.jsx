@@ -132,12 +132,9 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 		
 		document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
 		
-		// Preload other disclosure triangle state
-		(new Image()).src = 'disclosure-open.svg';
-		
 		this.sendMessage('registered');
-		
-		document.querySelector("#progress-window").setAttribute("aria-label", Zotero.getString('general_saveTo', 'Zotero'));
+
+		document.querySelector("#progress-window").setAttribute("aria-label", Zotero.getString('general_saveTo', ZOTERO_CONFIG.CLIENT_NAME));
 		Zotero.Connector.getPref('canUserAddNote').then(res => {
 			this.canUserAddNote = res;
 		});
@@ -179,7 +176,7 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 			if (this.lastHeight != requiredHeight
 					// In Firefox this ends up being 0 when the pane closes
 					&& this.rootNode.scrollHeight != 0) {
-				this.lastHeight = this.rootNode.scrollHeight;
+				this.lastHeight = requiredHeight;
 				this.sendMessage('resized', { height: requiredHeight });
 			}
 		});
@@ -223,7 +220,7 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 		if (!targets) {
 			state.targetSelectorShown = false;
 		}
-		let targetName = target?.name || "zotero.org";
+		let targetName = target?.name || ZOTERO_CONFIG.CLIENT_NAME;
 		// Alert that the item is being saved or has already been saved
 		let alert = this.done ? Zotero.getString("progressWindow_alreadySaved") : `${text} ${targetName}`;
 		document.getElementById("messageAlert").textContent = alert; 
@@ -670,7 +667,8 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 	renderHeadline() {
 		return (
 			<div className="ProgressWindow-headline">
-				{this.state.headlineText}
+				<img className="ProgressWindow-brandLogo" src="../images/zotero-z-32px.png" alt=""/>
+				<span className="ProgressWindow-headlineText">{this.state.headlineText}</span>
 				{this.state.targets
 					? this.renderHeadlineSelect()
 					: (this.state.target ? this.renderHeadlineTarget() : "")}
@@ -725,10 +723,10 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 	 * Image and target name (old client that doesn't provide collections)
 	 */
 	renderHeadlineTarget() {
-		return <React.Fragment>
+		return <span className="ProgressWindow-headlineTarget">
 			<TargetIcon type={getTargetType(this.state.target.id)}/>
-			{" " + this.state.target.name + "…"}
-		</React.Fragment>;
+			<span className="ProgressWindow-headlineTargetName">{this.state.target.name + "…"}</span>
+		</span>;
 	}
 
 
@@ -947,48 +945,23 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 	 * Item progress lines
 	 */
 	renderItem(item) {
-		var itemStyle = Object.assign(
-			{},
-			// Start at 50% opacity
-			{
-				opacity: (item.percentage || 0) / 200 + .5
-			},
-			item.parentItem && {
-				marginTop: "4px",
-				marginLeft: "12px"
-			},
-			item.failed && {
-				opacity: "1",
-				color: "red"
-			}
-		);
-		var iconStyle = Object.assign(
-			{},
-			{},
-			item.failed && {
-				backgroundImage: `url('${Zotero.UI.style.imageBase}cross.png')`,
-				backgroundPosition: ""
-			},
-			// Use circular indicator for partial progress
-			item.percentage && item.percentage != 100 && {
-				backgroundImage: `url('${Zotero.UI.style.imageBase}progress_arcs.png')`,
-				backgroundPosition: "-" + (Math.round(item.percentage / 100 * this.nArcs) * 16) + "px 0",
-				backgroundSize: "auto"
-			},
-			// Show item type icon on completion
-			(!item.failed && (!item.percentage || item.percentage == 100)) && {
-				backgroundImage: `url('${item.iconSrc}')`,
-				backgroundPosition: "",
-				backgroundSize: "contain"
-			},
-		);
-		
+		// Status drives the right-side indicator (see progressWindow.css):
+		// pending/in-progress spinner or ring (--p), check when done, error mark when failed
+		var status = item.failed
+			? "failed"
+			: (item.percentage == 100 ? "done" : (item.percentage > 0 ? "progress" : "pending"));
+		var className = `ProgressWindow-item is-${status}`
+			+ (item.parentItem ? " ProgressWindow-item--child" : "");
+		var itemStyle = { "--p": String(Math.round(item.percentage || 0)) };
+		var iconStyle = item.iconSrc ? { backgroundImage: `url('${item.iconSrc}')` } : {};
+
 		return (
-			<div key={item.id} className="ProgressWindow-item" style={itemStyle}>
+			<div key={item.id} className={className} style={itemStyle}>
 				<div className="ProgressWindow-itemIcon" style={iconStyle}></div>
 				<div className="ProgressWindow-itemText">
 					{item.title}
 				</div>
+				<div className="ProgressWindow-itemStatus" aria-hidden="true"></div>
 			</div>
 		);
 	}
@@ -1008,22 +981,11 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 		var contents = "";
 		
 		if (err === "translationError") {
-			let url = "https://www.zotero.org/support/troubleshooting_translator_issues";
-			let pageName = Zotero.getString('progressWindow_error_troubleshootingTranslatorIssues');
-			let pageLink = `<a href="${url}" title="${url}">${pageName}</a>`;
-			let html = {
-				__html: Zotero.getString("progressWindow_error_translation", pageLink)
-			};
-			contents = <span dangerouslySetInnerHTML={html}/>;
+			contents = Zotero.getString("progressWindow_error_translation");
 		}
 		else if (err === "fallback") {
-			let t1 = `<b>${args[0]}</b>`
-			let t2 = `<b>${args[1]}</b>`
-			let html = {
-				__html: Zotero.getString('progressWindow_error_fallback', [t1, t2])
-			};
-			contents = <span dangerouslySetInnerHTML={html}/>;
-		}
+            contents = <span>Could not save using {String(args[0] || 'this site')}. Trying {String(args[1] || 'basic metadata')}.</span>;
+        }
 		else if (err === "noTranslator") {
 			contents = Zotero.getString('progressWindow_error_noTranslator', ZOTERO_CONFIG.CLIENT_NAME);
 		}
@@ -1034,30 +996,13 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 			contents = Zotero.getString('progressWindow_error_clientRequired', ZOTERO_CONFIG.CLIENT_NAME);
 		}
 		else if (err === "upgradeClient") {
-			let clientName = ZOTERO_CONFIG.CLIENT_NAME;
-			let url = ZOTERO_CONFIG.CLIENT_DOWNLOAD_URL;
-			let pageName = Zotero.getString('progressWindow_error_upgradeClient_latestVersion');
-			let pageLink = `<a href="${url}">${pageName}</a>`;
-			let html = {
-				__html: Zotero.getString("progressWindow_error_upgradeClient", [clientName, pageLink])
-			};
-			contents = <span dangerouslySetInnerHTML={html}/>;
+			contents = Zotero.getString("progressWindow_error_upgradeClient", ZOTERO_CONFIG.CLIENT_NAME);
 		}
 		else if (err === "siteAccessLimits") {
-			const translator = `<b>${args[0]}</b>`;
-			const siteAccessURL = "https://www.zotero.org/support/kb/site_access_limits";
-			const siteAccessTitle = Zotero.getString('progressWindow_error_siteAccessLimits');
-			let siteAccessLink = `<a href="${siteAccessURL}" title="${siteAccessTitle}">${siteAccessTitle}</a>`;
-			let html = {
-				__html: Zotero.getString("progressWindow_error_siteAccessLimitsError", [translator, siteAccessLink])
-			};
-			contents = <span dangerouslySetInnerHTML={html}/>;
+			contents = Zotero.getString("progressWindow_error_siteAccessLimitsError", [args[0]]);
 		}
 		else if (err === "unexpectedError") {
-			let url = "https://www.zotero.org/support/getting_help";
-			contents = <span dangerouslySetInnerHTML={{
-				__html: Zotero.getString('progressWindow_error_unexpected', url)
-			}}/>;
+			contents = Zotero.getString('progressWindow_error_unexpected');
 		}
 
 		return (
@@ -1088,13 +1033,17 @@ Zotero.UI.ProgressWindow = class ProgressWindow extends React.PureComponent {
 
 class TargetIcon extends React.Component {
 	render() {
-		var image = this.props.type == 'library'
-			? "treesource-library.png"
-			: "treesource-collection.png";
-		var style = {
-			backgroundImage: `url('${Zotero.UI.style.imageBase}${image}')`
-		};
-		return <div className="ProgressWindow-targetIcon" style={style} />;
+		var isLibrary = this.props.type == 'library';
+		// Inline SVG using currentColor so it adapts to dark mode and selected rows
+		return (
+			<svg className={`ProgressWindow-targetIcon ProgressWindow-targetIcon--${isLibrary ? 'library' : 'collection'}`}
+					width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+					strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+				{isLibrary
+					? <path d="M2 3.5c2.5-.7 4.5-.7 6 .8 1.5-1.5 3.5-1.5 6-.8v9c-2.5-.7-4.5-.7-6 .8-1.5-1.5-3.5-1.5-6-.8zM8 4.3v9"/>
+					: <path d="M1.75 4.5c0-.83.67-1.5 1.5-1.5h2.9l1.5 1.6h5.1c.83 0 1.5.67 1.5 1.5v5.65c0 .83-.67 1.5-1.5 1.5h-9.5c-.83 0-1.5-.67-1.5-1.5z"/>}
+			</svg>
+		);
 	}
 }
 
@@ -1236,7 +1185,7 @@ class TargetTree extends React.Component {
 			{
 				onKeyPress: event => this.handleKeyPress(event),
 				
-				itemHeight: 20, // px
+				itemHeight: 28, // px -- must match .tree .tree-node height in progressWindow.css
 				
 				getRoots: () => this.getRoots(),
 				getKey: item => item.id,
@@ -1254,7 +1203,7 @@ class TargetTree extends React.Component {
 					}
 					
 					return (
-						<div className={className} style={{marginLeft: depth * 5 + "px"}}>
+						<div className={"tree-row " + className} style={{marginLeft: depth * 5 + "px"}}>
 							{/* Add toggle on arrow click, since we disabled it in tree.js for
 							    clicking on the row itself. If the tree is updated to have less
 							    annoying behavior, this can be reverted. */}
@@ -1313,15 +1262,14 @@ class TagsInput extends React.Component {
 	}
 
 	expandIframeIfNeeded() {
-		if (!this.state.showTagsAutocomplete || !this.autocompletePopupRef.current) return;
-		let autocompleteRect = this.autocompletePopupRef.current.getBoundingClientRect();
-		let fullyVisible = autocompleteRect.bottom <= window.innerHeight;
-		// Tell ProgressWindow how much extra height is needed
-		if (!fullyVisible){
-			let extraHeightForPopup = autocompleteRect.bottom - window.innerHeight;
-			this.props.setAutocompletePopupHeight(extraHeightForPopup);
-		}
-	}
+        // The list opens upward into the collection pane, inside the existing iframe.
+        // It remains scrollable on short viewports and never grows below the screen.
+        const list=this.autocompletePopupRef.current;
+        if (!list) return;
+        const input=this.tagsInputNode.current.getBoundingClientRect();
+        list.style.maxHeight=Math.max(72,Math.min(220,input.top-12))+'px';
+        this.props.setAutocompletePopupHeight(0);
+    }
 
 	// Add tags to the selected tags and refocus empty input
 	addTag = (tag) => {

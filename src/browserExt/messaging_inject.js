@@ -93,8 +93,19 @@ Zotero.Messaging = new function() {
 						// Zotero.Messaging.sendAsChunks / getChunkedPayload (see
 						// messages.js).
 
-						// send message
-						return browser.runtime.sendMessage([messageName, newArgs]).then(async function(response) {
+						// A content script that outlives an extension reload/update is orphaned:
+						// every message throws "Extension context invalidated". Nothing can be
+						// done from the page (it needs a reload), so go quiet instead of logging
+						// an uncaught error for each attempt.
+						let send;
+						try {
+							send = browser.runtime.sendMessage([messageName, newArgs]);
+						}
+						catch (e) {
+							if (/context invalidated/i.test(e.message)) return new Promise(() => {});
+							throw e;
+						}
+						return send.then(async function(response) {
 							if (response && response[0] == 'error') {
 								response[1] = JSON.parse(response[1]);
 								let e = new Error(response[1].message);
@@ -115,8 +126,9 @@ Zotero.Messaging = new function() {
 							// Unclear what to do with these. Chrome doesn't have error instance defined
 							// and these could be simply messages saying that no response was received for
 							// calls that didn't expect a response either.
-							// Either way, if we should be at least expecting a response and get an error we 
+							// Either way, if we should be at least expecting a response and get an error we
 							// throw
+							if (e && /context invalidated/i.test(e.message)) return new Promise(() => {});
 							if (messageConfig && messageConfig.response !== false) {
 								Zotero.logError(e);
 								throw e;
