@@ -38,6 +38,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:debug": "node scripts/build.mjs -d",
-    "package": "node scripts/build.mjs --zip"
+    "package": "node scripts/build.mjs --zip",
+    "test:retrieval": "node scripts/test-retrieval.mjs"
   }
 }

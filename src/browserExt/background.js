@@ -1141,6 +1141,8 @@ Zotero.Connector_Browser = new function() {
 	}
 
 	async function _browserAction(tab) {
+		// Abstractus: a queue started in the desktop app is worked from the toolbar button.
+		if (Zotero.Retrieval && await Zotero.Retrieval.onToolbarClick(tab)) return;
         const connection = await Zotero.Connector.getConnectionState();
         if (connection.state === 'pairing_required') {
             await browser.windows.create({url:browser.runtime.getURL('preferences/connect.html'),type:'popup',width:480,height:560,focused:true});
