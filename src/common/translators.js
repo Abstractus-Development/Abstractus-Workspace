@@ -50,7 +50,12 @@ Zotero.Translators = new function() {
 		_translators = {};
 		_initializedPromise = new Promise(async (resolve, reject) => {
 			try {
-				let translators = Zotero.Prefs.get("translatorMetadata");
+				// A previously accepted signed manifest is re-verified here; its metadata is the
+				// only metadata used. The stored metadata cache is writable and is ignored.
+				let signed = await Zotero.TranslatorTrust.load();
+				let adopted = await Zotero.TranslatorTrust.loadBundled();
+				if (adopted) signed = Zotero.TranslatorTrust.getActive();
+				let translators = signed ? signed.metadata : Zotero.Prefs.get("translatorMetadata");
 				// No stored translators
 				if (typeof translators !== "object" || !translators.length) {
 					Zotero.debug(`Translators: First time launch, getting all translators.`);
@@ -58,6 +63,7 @@ Zotero.Translators = new function() {
 				}
 				else {
 					this._load(translators);
+					if (adopted) await this._applyManifestChange(adopted.previous);
 				}
 				this.keepTranslatorsUpdated();
 				resolve();
@@ -187,11 +193,16 @@ Zotero.Translators = new function() {
 		Zotero.debug('Retrieving translators from Zotero Client');
 		let translatorMetadata;
 		try {
-			translatorMetadata = await Zotero.Repo.getTranslatorMetadataFromZotero();
-			return this.loadNewMetadata(translatorMetadata, reset, false)
+			return await this.updateFromDesktop();
 		}
 		catch (e) {
-			Zotero.debug('Failed to retrieve translators from Zotero Client, attempting Repo');
+			Zotero.debug('Signed translators from the desktop unavailable or rejected: ' + e.message);
+			if (Zotero.TranslatorTrust.getActive()) {
+				// A signed set is active. Metadata is never taken from the repository now (only
+				// hash-checked code is); keep the set we have.
+				return;
+			}
+			Zotero.debug('No signed translator set yet, attempting Repo');
 			try {
 				translatorMetadata = await Zotero.Repo.getTranslatorMetadataFromServer(reset);
 				return this.loadNewMetadata(translatorMetadata, reset, true)
@@ -201,6 +212,36 @@ Zotero.Translators = new function() {
 				throw e;
 			}	
 		}
+	}
+
+	/**
+	 * Fetches the signed manifest from Abstractus Desktop, verifies it, and replaces the
+	 * translator set with ITS metadata. Throws if anything fails to verify.
+	 */
+	this.updateFromDesktop = async function() {
+		const wrapper = await Zotero.Repo.getTranslatorManifestFromZotero();
+		const previous = await Zotero.TranslatorTrust.accept(wrapper);
+		const active = Zotero.TranslatorTrust.getActive();
+		if (previous && previous.sha256 === active.sha256) return;
+		this._load(active.metadata);
+		await this._applyManifestChange(previous);
+	}
+
+	/**
+	 * A new signed set became active (_load already ran): drop cached code that is gone or
+	 * changed, persist the metadata, reset hashes.
+	 */
+	this._applyManifestChange = async function(previous) {
+		const active = Zotero.TranslatorTrust.getActive();
+		for (const [id, entry] of (previous ? previous.byId : [])) {
+			const next = active.byId.get(id);
+			if (!next || next.sha256 !== entry.sha256) {
+				Zotero.Prefs.clear(Zotero.Translators.PREFS_TRANSLATOR_CODE_PREFIX + id);
+			}
+		}
+		await this._storeTranslatorMetadata();
+		this._translatorsHash = null;
+		this._sortedTranslatorHash = null;
 	}
 
 	/**
@@ -340,6 +381,31 @@ Zotero.Translators = new function() {
 	 * Load code for a translator
 	 */
 	this.getCodeForTranslator = async function (translator) {
+		if (Zotero.TranslatorTrust.getActive()) {
+			// Verified against the signed manifest every time, immediately before use:
+			// cached code lives in storage that is not trusted.
+			let cached = translator.code;
+			if (!cached) {
+				try { cached = Zotero.Prefs.get(Zotero.Translators.PREFS_TRANSLATOR_CODE_PREFIX + translator.translatorID); }
+				catch (e) {}
+			}
+			if (cached && await Zotero.TranslatorTrust.codeMatches(translator.translatorID, cached)) {
+				translator.code = cached;
+				return cached;
+			}
+			delete translator.code;
+			if (cached) {
+				Zotero.debug(`Translators: cached code for ${translator.translatorID} failed verification; discarded`);
+				await Zotero.Prefs.clear(Zotero.Translators.PREFS_TRANSLATOR_CODE_PREFIX + translator.translatorID);
+			}
+			let fresh = await Zotero.Repo.getTranslatorCode(translator.translatorID);
+			if (!await Zotero.TranslatorTrust.codeMatches(translator.translatorID, fresh)) {
+				throw new Error(`Translator ${translator.translatorID} failed verification`);
+			}
+			Zotero.Prefs.set(Zotero.Translators.PREFS_TRANSLATOR_CODE_PREFIX + translator.translatorID, fresh);
+			translator.code = fresh;
+			return fresh;
+		}
 		if (translator.code) return translator.code;
 		
 		let code;

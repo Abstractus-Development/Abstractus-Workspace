@@ -1,0 +1,5 @@
+{
+	"_comment": "Ed25519 PUBLIC keys (raw, base64) for the desktop's signed translator manifest. Release builds embed only 'release'. 'dev' is for local builds (-d or --dev-keys) and must never ship. 'release' stays null until the release keypair is generated; the private key lives outside both repos.",
+	"release": null,
+	"dev": "y90Rk1T1FNESxmvYCy5MCKkC/j2oskzrwQsdNGmEAVo="
+}

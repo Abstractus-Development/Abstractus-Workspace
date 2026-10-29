@@ -4,7 +4,8 @@
   const encoder = new TextEncoder();
   const messages = {
     pairing_required: 'Click Connect to Abstractus Desktop in Connector Settings, or use a connection code from Library → Browser connections.',
-    desktop_update_required: 'The app on the desktop port does not support secure browser connections. Open an updated Abstractus Desktop before connecting.',
+    desktop_update_required: 'Abstractus Desktop is out of date for this extension. Update Abstractus Desktop, then try again.',
+    extension_update_required: 'This extension is out of date for Abstractus Desktop. Update the Abstractus browser extension, then try again.',
     offline: 'Open Abstractus Desktop, then try again.',
     unverified: 'Desktop could not be verified. Check that Abstractus Desktop is running, then reconnect this browser in Connector Settings.',
     connected: 'Connected securely to Abstractus Desktop.'
@@ -27,6 +28,12 @@
     } catch { return 'offline'; }
     finally { clearTimeout(timer); }
   }
+  // Response proof versions: 1 signs status and body; 2 also signs Content-Type. This extension sends the
+  // current version and accepts a desktop that answers with any version from MIN_DESKTOP_PROOF_VERSION up to it.
+  // Raise MIN deliberately in a later release, once the store desktop has updated (DESKTOP-RELEASE.md,
+  // "Compatibility window", in the desktop repo). There is no remote switch for it.
+  const PROOF_VERSION = 2;
+  const MIN_DESKTOP_PROOF_VERSION = 2;
   const hex = bytes => Array.from(new Uint8Array(bytes), b=>b.toString(16).padStart(2,'0')).join('');
   const unhex = text => Uint8Array.from(text.match(/../g), v=>parseInt(v,16));
   const digest = async bytes => hex(await crypto.subtle.digest('SHA-256',bytes));
@@ -78,6 +85,7 @@
     const body=await bytes(options.body), bodyHash=await digest(body);
     const headers=new Headers(options.headers);
     headers.set('X-Zotero-Connector-API-Version','3');
+    headers.set('X-Abstractus-Proof-Version',String(PROOF_VERSION));
     const canonical=['abstractus-request-v1',pair.id,time,n,method,url.pathname+url.search,bodyHash,headers.get('Content-Type')||'',headers.get('X-Metadata')||''].join('\n');
     const proof=await signature(pair.key,canonical);
     for(const [key,value] of Object.entries({'X-Abstractus-Client':pair.id,'X-Abstractus-Time':time,'X-Abstractus-Nonce':n,'X-Abstractus-Body':bodyHash,'X-Abstractus-Signature':proof.value})) headers.set(key,value);
@@ -91,8 +99,19 @@
       raw=new Uint8Array(length);let offset=0;for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.length;}
     } catch { throw connectionError('offline'); } finally {clearTimeout(timer);}
     const serverProof=response.headers.get('X-Abstractus-Proof');
-    const valid=serverProof && /^[a-f0-9]{64}$/.test(serverProof) && await crypto.subtle.verify('HMAC',proof.cryptoKey,unhex(serverProof),encoder.encode(['abstractus-response-v1',n,String(response.status),await digest(raw)].join('\n')));
-    if(!valid)throw connectionError(response.status === 404 && url.pathname === '/connector/handshake' ? 'desktop_update_required' : 'unverified');
+    const bodyDigest=await digest(raw);
+    const proofOk=async text=>Boolean(serverProof && /^[a-f0-9]{64}$/.test(serverProof) && await crypto.subtle.verify('HMAC',proof.cryptoKey,unhex(serverProof),encoder.encode(text)));
+    const proofText=version=>['abstractus-response-v'+version,n,String(response.status)].concat(version>=2?[response.headers.get('Content-Type')||'']:[],[bodyDigest]).join('\n');
+    let valid=false, tooOld=false;
+    for(let version=PROOF_VERSION;version>=1&&!valid;version--){
+      if(!await proofOk(proofText(version)))continue;
+      // A proof below MIN is never trusted, but it says why: that desktop needs updating.
+      if(version>=MIN_DESKTOP_PROOF_VERSION)valid=true; else tooOld=true;
+    }
+    if(!valid){
+      if(response.status === 426) throw connectionError('extension_update_required');
+      throw connectionError(tooOld || (response.status === 404 && url.pathname === '/connector/handshake') ? 'desktop_update_required' : 'unverified');
+    }
     const text=new TextDecoder().decode(raw);
     return {status:response.status,response:text,responseText:text,getResponseHeader:name=>response.headers.get(name)};
   }

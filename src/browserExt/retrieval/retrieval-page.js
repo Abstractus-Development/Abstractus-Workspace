@@ -14,11 +14,12 @@
 		$('progress').textContent = total ? `${Math.min(view.done + (ended ? 0 : 1), total)} of ${total}` : '';
 		$('title').textContent = ended ? '' : (view.title || '');
 		const needs = view.phase === 'needs_you';
-		$('note').textContent = needs ? 'Needs you: finish this page, then press Continue'
-			: (view.message || (view.phase === 'waiting' ? 'Waiting before the next paper.' : ''));
+		const intro = total ? `Getting ${total} ${total === 1 ? 'paper' : 'papers'} for Abstractus Desktop` : '';
+		$('note').textContent = needs ? 'Needs you: finish the check in the open window'
+			: (view.message || (view.phase === 'waiting' ? 'Waiting before the next paper.' : (ended ? '' : intro)));
 		$('note').className = 'note' + (needs ? ' needs' : '');
-		$('pause').hidden = paused || needs || ended;
-		$('continue').hidden = !(paused || needs);
+		$('pause').hidden = paused || ended;
+		$('continue').hidden = !paused;
 		$('stop').hidden = ended;
 	}
 
@@ -31,6 +32,22 @@
 			refresh();
 		});
 	}
+	// Optional library proxy host (EZproxy, OpenAthens). Checked and stored by the background.
+	const ERRORS = {empty: '', scheme: 'Use a web address.', unparseable: 'That is not a host name.', userinfo: 'Remove the user name.',
+		port: 'Remove the port.', ip_address: 'Use a host name, not an address.', not_a_hostname: 'That is not a host name.',
+		blocked_site: 'That site is not allowed.', too_broad: 'That host is too broad.'};
+	async function loadProxy() {
+		try { $('proxy-host').value = (await ask('get-proxy')).host || ''; } catch { /* leave empty */ }
+	}
+	$('proxy-save').addEventListener('click', async () => {
+		try {
+			const r = await api.runtime.sendMessage({type: 'abstractus-retrieval', action: 'set-proxy', value: $('proxy-host').value});
+			if (r && r.ok) { $('proxy-host').value = r.host; $('proxy-note').textContent = r.host ? 'Saved.' : 'Cleared.'; }
+			else $('proxy-note').textContent = ERRORS[r && r.error] || 'Not saved.';
+		}
+		catch { $('proxy-note').textContent = 'Not saved.'; }
+	});
+	loadProxy();
 	refresh();
 	setInterval(refresh, 1500);
 })();

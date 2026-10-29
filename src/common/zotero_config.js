@@ -29,8 +29,8 @@ const ZOTERO_CONFIG = {
 	DOMAIN_NAME: 'abstractus.ai',
 	// Local connector server run by Abstractus Desktop
 	CONNECTOR_URL: 'http://127.0.0.1:23130/',
-	// Site translators (the page parsers) are still fetched from and kept up to date by the Zotero
-	// translator repository. Abstractus Desktop does not serve translators, so always use the repo.
+	// Site translators (the page parsers): Abstractus Desktop serves a signed copy; the Zotero
+	// translator repository is the fallback.
 	REPOSITORY_URL: 'https://repo.zotero.org/repo/',
 	// The repository only serves translators to Zotero Connector versions it knows (anything else
 	// gets a 403), so requests to it identify as the upstream connector release this fork tracks,
@@ -39,7 +39,9 @@ const ZOTERO_CONFIG = {
 	REPOSITORY_CHECK_INTERVAL: 86400, // 24 hours
 	REPOSITORY_RETRY_INTERVAL: 3600, // 1 hour
 	REPOSITORY_CHANNEL: 'trunk',
-	ALWAYS_FETCH_FROM_REPOSITORY: true,
+	// Abstractus Desktop serves a signed, bundled copy of the translators; the extension verifies it
+	// (Zotero.TranslatorTrust) and uses it first. The repository is the fallback for code only.
+	ALWAYS_FETCH_FROM_REPOSITORY: false,
 	WWW_BASE_URL: 'https://www.abstractus.ai/',
 	CLIENT_DOWNLOAD_URL: 'https://www.abstractus.ai/'
 };

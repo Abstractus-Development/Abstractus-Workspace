@@ -34,10 +34,6 @@ Zotero.HostPermissions = new function() {
 		[REPOSITORY_DOMAIN]: {
 			origin: 'https://repo.zotero.org/*',
 			message: 'permissions_siteAccess_message_repo_required'
-		},
-		'api.zotero.org': {
-			origin: 'https://api.zotero.org/*',
-			message: 'permissions_siteAccess_message_api_required'
 		}
 	};
 
@@ -151,7 +147,7 @@ Zotero.HostPermissions = new function() {
 			.map(domain => Zotero.getString(DOMAIN_CONFIG[domain].message))
 			.join('');
 		let connectorName = Zotero.getString('appConnector', ZOTERO_CONFIG.CLIENT_NAME);
-		// e.g., "<b>repo.zotero.org</b> and <b>api.zotero.org</b>", with a locale-appropriate
+		// e.g., "<b>127.0.0.1</b> and <b>repo.zotero.org</b>", with a locale-appropriate
 		// conjunction
 		let domainList = new Intl.ListFormat(browser.i18n.getUILanguage(), { type: 'conjunction' })
 			.format(missingDomains.map(domain => `<b>${domain}</b>`));

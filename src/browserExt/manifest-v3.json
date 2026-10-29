@@ -14,7 +14,7 @@
 	},
 	"host_permissions": ["http://127.0.0.1/*", "https://repo.zotero.org/*", "http://*/*", "https://*/*"],
 	"permissions": ["tabs", "contextMenus", "cookies", "scripting", "offscreen",
-		"webRequest", "declarativeNetRequest", "webNavigation", "storage", "nativeMessaging"],
+		"webRequest", "declarativeNetRequest", "webNavigation", "storage", "nativeMessaging", "alarms"],
 	"optional_permissions": ["clipboardWrite"],
 	"background": {
 		"service_worker": "background-worker.js"
@@ -22,6 +22,7 @@
 	"content_scripts": [
 		{
 			"matches": ["http://*/*", "https://*/*"],
+			"exclude_matches": [/*EXCLUDE MATCHES*/],
 			"run_at": "document_start",
 			"js": [/*INJECT SCRIPTS*/]
 		}

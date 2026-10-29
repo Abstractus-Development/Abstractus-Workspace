@@ -17,6 +17,13 @@
 			<button id="continue" type="button" hidden>Continue</button>
 			<button id="stop" type="button" class="quiet">Stop</button>
 		</div>
+		<details class="proxy">
+			<summary>Library proxy</summary>
+			<label for="proxy-host">Proxy host, if your library uses one</label>
+			<input id="proxy-host" type="text" placeholder="ezproxy.library.edu" autocomplete="off" spellcheck="false">
+			<button id="proxy-save" type="button" class="quiet">Save</button>
+			<p id="proxy-note" class="note" role="status"></p>
+		</details>
 		<p class="foot">Pages open one at a time in a separate window. Nothing runs unless you started it.</p>
 	</main>
 	<script src="retrieval-page.js"></script>

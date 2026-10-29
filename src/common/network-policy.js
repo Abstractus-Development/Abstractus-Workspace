@@ -24,6 +24,10 @@ Zotero.AbstractusNetwork = {
       || /(^|\.)(localhost|local|internal|lan|home|test|invalid)$/.test(host)) {
       throw new Error('Translator requests require a public HTTPS publisher address');
     }
+    // Abstractus hard blocklist (login, mail, bank, cloud console, our own sites, paste and shortener sites).
+    if(typeof Zotero!=='undefined' && Zotero.SiteBlocklist && Zotero.SiteBlocklist.isBlockedUrl(parsed.href)) {
+      throw new Error('Translator requests to this site are blocked');
+    }
     return parsed.href;
   },
   // Hosts share a site when they share their registrable domain (approximated by the last

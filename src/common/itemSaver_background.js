@@ -135,6 +135,10 @@ Zotero.ItemSaver.saveStandaloneAttachmentToZotero = async function(attachment, s
 }
 
 Zotero.ItemSaver._fetchAttachment = async function(attachment, tab, attemptBotProtectionBypass=true) {
+	// Abstractus hard blocklist: neither the tab nor the file may be on a blocked site.
+	if (Zotero.SiteBlocklist.isBlockedUrl(attachment.url) || (tab && tab.url && Zotero.SiteBlocklist.isBlockedUrl(tab.url))) {
+		throw new Error('Abstractus does not fetch from this site');
+	}
 	// Attachment URLs come from translator output: same rules as translator requests.
 	attachment.url = Zotero.AbstractusNetwork.validate(attachment.url);
 	let options = { responseType: "arraybuffer", timeout: 60000, successCodes: false, publisherOnly: true };

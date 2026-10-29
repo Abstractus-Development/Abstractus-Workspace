@@ -125,16 +125,13 @@ var MESSAGES = {
 		sendMessage: true
 	},
 	Debug: {
-		get: true,
 		bgInit: false,
-		clear: false,
 		log: {
 			response: false,
 			background: {
 				minArgs: 4
 			}
-		},
-		setStore: false
+		}
 	},
 	Connector: {
 		getConnectionState: true,
@@ -189,14 +186,8 @@ var MESSAGES = {
 		isTabFocused: true,
 		newerVersionRequiredPrompt: true,
 		openTab: false,
-		openConfigEditor: false,
 		openPreferences: false,
 		bringToFront: true
-	},
-	Connector_Debug: {
-		storing: true,
-		get: true,
-		count: true,
 	},
 	ItemSaver: {
 		saveAttachmentToZotero: true,
@@ -204,8 +195,6 @@ var MESSAGES = {
 	},
 	Errors: {
 		log: false,
-		getErrors: true,
-		getSystemInfo: true,
 	},
 	Messaging: {
 		sendMessage: {
@@ -239,7 +228,6 @@ var MESSAGES = {
 		getAll: true,
 		getDefault: true,
 		getAsync: true,
-		removeAllCachedTranslators: true,
 		clear: false
 	},
 	Proxies: {

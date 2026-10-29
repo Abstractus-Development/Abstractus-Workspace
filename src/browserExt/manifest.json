@@ -27,6 +27,7 @@
 	"content_scripts": [
 		{
 			"matches": ["http://*/*", "https://*/*"],
+			"exclude_matches": [/*EXCLUDE MATCHES*/],
 			"run_at": "document_start",
 			"js": [/*INJECT SCRIPTS*/]
 		}

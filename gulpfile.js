@@ -127,8 +127,10 @@ var backgroundInclude = [
 	'http.js',
 	'proxy.js',
 	'secure-connector.js',
+	'siteBlocklist.js',
 	'retrievalModel.js',
 	'connector.js',
+	'translatorTrust.js',
 	'repo.js',
 	'translate/debug.js',
 	'translate/tlds.js',
@@ -316,6 +318,9 @@ function processFile() {
 								injectScripts.map((s) => `"${s}"`).join(',\n\t\t\t'))
 					}
 					
+					// Abstractus: sites the extension never injects into, from src/common/siteBlocklist.js
+					contents = contents.replace("/*EXCLUDE MATCHES*/",
+						require('./src/common/siteBlocklist.js').manifestExcludeMatches().map(s => `"${s}"`).join(',\n\t\t\t\t'));
 					contents = contents
 						.replace(/"version": "[^"]*"/, '"version": "' + argv.connectorVersion + '"');
 					if (typeof process.env.ZOTERO_BETA_BUILD_EXPIRATION != 'undefined') {

@@ -3,7 +3,8 @@
 	Abstractus Connector build script (cross-platform replacement for build.sh).
 
 	Usage: node scripts/build.mjs [-d] [-v VERSION] [--zip]
-	  -d            debug build (translator tester, test pages, unminified debug libs)
+	  -d            debug build (translator tester, test pages, unminified debug libs); trusts the DEV translator key
+	  --dev-keys    trust the DEV translator key without a debug build (local testing only)
 	  -v VERSION    extension version (defaults to package.json "version")
 	  --zip         also package dist/Abstractus_Connector-{chrome,firefox}-VERSION.zip
 
@@ -16,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { keysForBuild, stamp, assertNoDevKey, verifyBaseline, copyBaseline, BASELINE_DIR } from './translator-keys.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'src');
@@ -30,6 +32,7 @@ const SKIN = path.join(SRC, 'zotero', 'chrome', 'skin', 'default', 'zotero');
 const args = process.argv.slice(2);
 const DEBUG = args.includes('-d');
 const ZIP = args.includes('--zip');
+const DEV_KEYS = DEBUG || args.includes('--dev-keys');
 const versionIdx = args.indexOf('-v');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VERSION = versionIdx >= 0 ? args[versionIdx + 1] : pkg.version;
@@ -226,6 +229,18 @@ if (gulp.status !== 0) {
 	fail(`gulp exited with ${gulp.status} (output above, also in build.log).`);
 }
 
+// Translator-signing public key: dev builds get the dev key only, all others the release key only.
+// Stamped after gulp, which copies the sources into each browser directory.
+{
+	let keys;
+	try { keys = keysForBuild({ dev: DEV_KEYS, zip: ZIP }); } catch (e) { fail(e.message); }
+	for (const browser of ['manifestv3', 'firefox']) {
+		const trust = path.join(BUILD, browser, 'translatorTrust.js');
+		fs.writeFileSync(trust, stamp(fs.readFileSync(trust, 'utf8'), keys.list));
+	}
+	console.log(`Translator trust: ${keys.mode}${keys.mode === 'release-without-key' ? ' (no release key yet: desktop translators will not be trusted)' : ''}`);
+}
+
 for (const browser of ['manifestv3', 'firefox']) {
 	const dir = path.join(BUILD, browser);
 	rm(path.join(dir, 'manifest-v3.json'));
@@ -251,6 +266,26 @@ for (const browser of ['manifestv3', 'firefox']) {
 	}
 }
 
+// Signed baseline translators ship inside the package, so translators work offline and before the
+// desktop answers. The build refuses a baseline that its own embedded key does not verify.
+{
+	const keys = keysForBuild({ dev: DEV_KEYS, zip: ZIP });
+	if (keys.list.length) {
+		if (!fs.existsSync(path.join(BASELINE_DIR, 'manifest.json'))) {
+			if (ZIP) fail('translator-baseline/ is missing. Run scripts/sync-translator-baseline.mjs from a signed desktop translators folder.');
+			console.log('No translator-baseline/: building without the bundled baseline.');
+		}
+		else {
+			try { verifyBaseline(BASELINE_DIR, keys.list[0]); } catch (e) { fail(e.message); }
+			for (const b of ['manifestv3', 'firefox']) copyBaseline(BASELINE_DIR, path.join(BUILD, b, 'translators'));
+			console.log('Bundled signed translator baseline.');
+		}
+	}
+}
+
+if (!DEV_KEYS) {
+	try { for (const b of ['manifestv3', 'firefox']) assertNoDevKey(path.join(BUILD, b)); } catch (e) { fail(e.message); }
+}
 console.log('Built build/manifestv3 (Chromium) and build/firefox');
 
 if (ZIP) {

@@ -80,7 +80,6 @@ var Zotero_Preferences = {
 		}		
 		
 		Zotero_Preferences.General.init();
-		Zotero_Preferences.Advanced.init();
 
 		// Abstractus: the proxy pane is hidden.
 		if (Zotero_Preferences.PROXIES_ENABLED) {
@@ -92,9 +91,6 @@ var Zotero_Preferences = {
 
 		Zotero.initDeferred.resolve();
 		Zotero.isInject = true;
-
-		Zotero_Preferences.refreshData();
-		window.setInterval(() => Zotero_Preferences.refreshData(), 1000);
 
 		if (Zotero.isSafari) {
 			// Let the initialized preferences pane render before displaying a modal over it.
@@ -142,39 +138,6 @@ var Zotero_Preferences = {
 
 		this.pane[paneName].classList.toggle('selected', true);
 		this.content[paneName].classList.toggle('selected', true);
-	},
-	
-	/**
-	 * Refreshes data that may have changed while the options window is open
-	 */
-	refreshData: function() {
-		// get errors
-		return Zotero.Errors.getErrors().then(function(errors) {
-			errors = errors.filter(error => !/^Info: Service worker starts:/.test(String(error)));
-			if(errors.length) {
-				document.getElementById('advanced-no-errors').style.display = "none";
-				document.getElementById('advanced-have-errors').style.display = "block";
-				document.getElementById('advanced-textarea-errors').textContent = errors.join("\n\n");
-			}
-			// get debug logging info
-			return Zotero.Connector_Debug.count();
-		}).then(function(count) {
-			document.getElementById('advanced-span-lines-logged').textContent
-				= Zotero.getString('preferences_debugOutput_linesLogged', count);
-			toggleDisabled(document.getElementById('advanced-button-view-output'), !count);
-			toggleDisabled(document.getElementById('advanced-button-copy-output'), !count);
-			toggleDisabled(document.getElementById('advanced-button-clear-output'), !count);
-		});
-	},
-
-	/**
-	 * Copies text to the clipboard and briefly confirms on the button
-	 */
-	copyToClipboard: async function(button, text) {
-		await navigator.clipboard.writeText(text);
-		let label = button.value;
-		button.value = Zotero.getString('general_copied');
-		setTimeout(() => button.value = label, 1500);
 	}
 };
 
@@ -197,34 +160,46 @@ Zotero_Preferences.General = {
 			AbstractusTheme.set(appearance.value);
 		});
 
+		// The list of sites Abstractus never touches, generated from siteBlocklist.js (read-only).
+		Zotero_Preferences.General.renderBlockedSites();
 		// A for Abstractus (Zotero uses S); keep in sync with "commands" in the manifests
 		let shortcut = Zotero.isMac ? '⌘⇧A' : 'Ctrl+Shift+A';
 		document.getElementById('saving-how-to').innerHTML = Zotero.getString('preferences_saving_howTo',
 			`<kbd>${shortcut}</kbd>`);
 
-		document.getElementById("advanced-button-reset-translators").addEventListener('click', async (event) => {
-			event.target.value = Zotero.getString('preferences_translators_resetting');
-			try {
-				// Otherwise "Resetting translators..." flash-appears and it looks glitchy
-				await Promise.all([Zotero.Promise.delay(1000), (async () => {
-					await Zotero.Prefs.removeAllCachedTranslators();
-					return Zotero.Translators.updateFromRemote(true)
-				})()]);
-				event.target.value = Zotero.getString('preferences_translators_updated');
-			} catch (e) {
-				event.target.value = Zotero.getString('preferences_translators_updateFailed');
-			}
-		});
-
-		var openTranslatorTesterButton = document.getElementById("advanced-button-open-translator-tester");
-		if (openTranslatorTesterButton) openTranslatorTesterButton.onclick = Zotero_Preferences.General.openTranslatorTester;
 	},
 
-	/**
-	 * Opens the translator tester in a new window.
-	 */
-	openTranslatorTester: function() {
-		window.open(Zotero.getExtensionURL("tools/testTranslators/testTranslators.html"), "translatorTester");
+	renderBlockedSites: function() {
+		const host = document.getElementById('blocked-sites-list');
+		if (!host || !Zotero.SiteBlocklist) return;
+		for (const row of Zotero.SiteBlocklist.describeBlocklist()) {
+			const details = document.createElement('details');
+			details.className = 'blocked-row';
+			const summary = document.createElement('summary');
+			const name = document.createElement('span');
+			name.className = 'blocked-name';
+			name.textContent = row.category;
+			const why = document.createElement('span');
+			why.className = 'blocked-why';
+			why.textContent = row.reason;
+			const count = document.createElement('span');
+			count.className = 'badge';
+			count.textContent = String(row.count);
+			summary.append(name, why, count);
+			const list = document.createElement('ul');
+			list.className = 'blocked-list';
+			for (const entry of row.entries) {
+				const li = document.createElement('li');
+				li.textContent = entry;
+				list.appendChild(li);
+			}
+			details.append(summary, list);
+			host.appendChild(details);
+		}
+		if (new URLSearchParams(location.search).get('show') === 'blocked') {
+			const card = document.getElementById('blocked-sites-card');
+			if (card) card.scrollIntoView();
+		}
 	}
 };
 
@@ -236,65 +211,6 @@ Zotero_Preferences.Proxies = {
 	}
 };
 
-
-Zotero_Preferences.Advanced = {
-	init: function() {
-		
-		document.getElementById("advanced-checkbox-enable-logging").onchange =
-			function() { Zotero.Debug.setStore(this.checked); };
-		document.getElementById("advanced-checkbox-enable-at-startup").onchange =
-			function() { Zotero.Prefs.set('debug.store', this.checked); };
-		document.getElementById("advanced-button-view-output").onclick = Zotero_Preferences.Advanced.viewDebugOutput;
-		document.getElementById("advanced-button-clear-output").onclick = Zotero_Preferences.Advanced.clearDebugOutput;
-		document.getElementById("advanced-button-copy-output").onclick = async function() {
-			Zotero_Preferences.copyToClipboard(this, await Zotero.Connector_Debug.get());
-		};
-		document.getElementById("advanced-button-copy-errors").onclick = async function() {
-			let errors = await Zotero.Errors.getErrors();
-			let sysInfo = await Zotero.Errors.getSystemInfo();
-			Zotero_Preferences.copyToClipboard(this, `${errors.join('\n\n')}\n\n${sysInfo}`);
-		};
-
-		var testRunnerButton = document.getElementById("advanced-button-open-test-runner");
-		if (testRunnerButton) testRunnerButton.onclick = function() {
-			Zotero.Connector_Browser.openTab(Zotero.getExtensionURL(`test/test.html`));
-		};
-		document.getElementById("advanced-button-config-editor").onclick = function() {
-			if (confirm(Zotero.getString('preferences_configEditor_description'))) {
-				Zotero.Connector_Browser.openConfigEditor();
-			}
-		};
-
-		// get preference values
-		Zotero.Connector_Debug.storing(function(status) {
-			document.getElementById('advanced-checkbox-enable-logging').checked = !!status;
-		});
-		Zotero.Prefs.getAsync("debug.store").then(function(status) {
-			document.getElementById('advanced-checkbox-enable-at-startup').checked = !!status;
-		});
-	},
-		
-	/**
-	 * Opens a new window to view debug output.
-	 */
-	viewDebugOutput: function() {
-		Zotero.Connector_Debug.get(function(log) {
-			var textarea = document.getElementById("advanced-textarea-debug");
-			textarea.textContent = log;
-			textarea.style.display = "";
-		});
-	},
-
-	/**
-	 * Clears stored debug output.
-	 */
-	clearDebugOutput: function() {
-		Zotero.Debug.clear();
-		Zotero_Preferences.refreshData();
-		var textarea = document.getElementById("advanced-textarea-debug");
-		textarea.style.display = 'none';
-	}
-};
 
 Zotero_Preferences.Components = {};
 

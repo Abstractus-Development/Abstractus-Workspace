@@ -26,7 +26,7 @@
 // TODO: refactor this class
 Zotero.Connector = new function() {
 	const CONNECTOR_API_VERSION = 3;
-	const PASSIVE_METHODS = new Set(['ping', 'getTranslatorCode', 'getTranslators', 'getClientHostnames']);
+	const PASSIVE_METHODS = new Set(['ping', 'getTranslatorCode', 'getTranslators', 'getTranslatorManifest', 'getClientHostnames']);
 	
 	this.isOnline = (Zotero.isSafari || Zotero.isFirefox) ? false : null;
 	this.clientVersion = '';
@@ -297,26 +297,3 @@ Zotero.Connector.CommunicationError = function (message, status=0, value='') {
     this.value = value;
 }
 Zotero.Connector.CommunicationError.prototype = new Error;
-
-Zotero.Connector_Debug = new function() {
-	/**
-	 * Call a callback depending upon whether debug output is being stored
-	 */
-	this.storing = function() {
-		return Zotero.Debug.storing;
-	}
-	
-	/**
-	 * Call a callback with the lines themselves
-	 */
-	this.get = function() {
-		return Zotero.Debug.get();
-	};
-		
-	/**
-	 * Call a callback with the number of lines of output
-	 */
-	this.count = function() {
-		return Zotero.Debug.count();
-	}
-}

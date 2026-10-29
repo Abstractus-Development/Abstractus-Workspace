@@ -196,8 +196,7 @@ var Zotero = global.Zotero = new function() {
 		}
 		
 		Zotero.Debug.init();
-		let storingDebugOnRestart = Zotero.Prefs.get('debug.store');
-		if (storingDebugOnRestart) Zotero.Debug.setStore(storingDebugOnRestart);
+		// Abstractus: debug output is never stored; the old pref is ignored and cleared.
 		Zotero.Prefs.set('debug.store', false);
 		Zotero.WebRequestIntercept.init();
 		await Zotero.Connector_Browser.init();

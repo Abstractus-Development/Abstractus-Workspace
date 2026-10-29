@@ -54,21 +54,55 @@ Zotero.Repo = new function() {
 		var translator = await Zotero.Translators.getWithoutCode(translatorID);
 		var code;
 		
-		if (!ZOTERO_CONFIG.ALWAYS_FETCH_FROM_REPOSITORY) {
-			// try standalone
-			try {
-				code = await Zotero.Connector.callMethod("getTranslatorCode", { translatorID: translatorID })
+		var trust = Zotero.TranslatorTrust.getActive();
+		if (trust) {
+			// A signed manifest is active. Code from ANY source must match its hash for this
+			// translator, and the manifest -- not the code header -- is the only metadata source.
+			if (!trust.byId.has(translatorID)) {
+				throw new Error(`Translator ${translatorID} is not in the signed manifest`);
 			}
-			catch (e) {}
+			// 1. the copy packaged with the extension (works offline)
+			code = await Zotero.TranslatorTrust.bundledCode(translatorID);
+			if (code && !await Zotero.TranslatorTrust.codeMatches(translatorID, code)) code = null;
+			// 2. the desktop
+			if (!code && !ZOTERO_CONFIG.ALWAYS_FETCH_FROM_REPOSITORY) {
+				try {
+					code = await Zotero.Connector.callMethod("getTranslatorCode", { translatorID: translatorID });
+					if (!await Zotero.TranslatorTrust.codeMatches(translatorID, code)) {
+						Zotero.debug(`Repo: desktop code for ${translatorID} failed verification; discarded`);
+						code = null;
+					}
+				}
+				catch (e) {
+					code = null;
+				}
+			}
+			if (!code && !debugMode) {
+				try {
+					await checkRepositoryAccess();
+					let xhr = await Zotero.HTTP.request("GET", this._codeURL(translatorID));
+					code = xhr.responseText;
+					if (!await Zotero.TranslatorTrust.codeMatches(translatorID, code)) {
+						Zotero.debug(`Repo: repository code for ${translatorID} does not match the signed manifest; discarded`);
+						code = null;
+					}
+				}
+				catch (e) {
+					code = null;
+				}
+			}
+			if (!code) {
+				throw new Error(`Failed to fetch verified code for translator ${translator ? translator.label : translatorID}`);
+			}
+			return code;
 		}
 		
-		// Don't fetch from repo in debug mode
-		if (!code && !debugMode) {
-			// then try repo
-			const url = `${ZOTERO_CONFIG.REPOSITORY_URL}code/${translatorID}?version=${ZOTERO_CONFIG.REPOSITORY_CLIENT_VERSION}`;
+		// No signed manifest has been accepted yet: stock behaviour. Code comes from
+		// repo.zotero.org over HTTPS only; unverified code from the desktop is never used.
+		if (!debugMode) {
 			try {
 				await checkRepositoryAccess();
-				let xhr = await Zotero.HTTP.request("GET", url);
+				let xhr = await Zotero.HTTP.request("GET", this._codeURL(translatorID));
 				code = xhr.responseText;
 			}
 			catch (e) {}
@@ -94,23 +128,23 @@ Zotero.Repo = new function() {
 				Zotero.debug("Repo: Retrieved code for "+metadata.label+" newer than stored metadata; updating");
 				await Zotero.Translators.updateTranslator(metadata);
 			}
-			// else {
-			// 	Zotero.debug("Repo: Retrieved code for "+metadata.label+" older than stored metadata; not caching");
-			// }
 		}
 		return code;
 	};
 	
+	this._codeURL = function (translatorID) {
+		return `${ZOTERO_CONFIG.REPOSITORY_URL}code/${translatorID}?version=${ZOTERO_CONFIG.REPOSITORY_CLIENT_VERSION}`;
+	};
+	
 	/**
-	 * Retrieve translator metadata from Zotero Standalone
+	 * Fetch the signed translator manifest from Abstractus Desktop. The reply is untrusted
+	 * until Zotero.TranslatorTrust verifies it.
 	 */
-	this.getTranslatorMetadataFromZotero = async function() {
+	this.getTranslatorManifestFromZotero = async function() {
 		if (ZOTERO_CONFIG.ALWAYS_FETCH_FROM_REPOSITORY) {
-			throw new Error("Cannot fetch metadata from Zotero when ALWAYS_FETCH_FROM_REPOSITORY is enabled");
+			throw new Error("Cannot fetch translators from the desktop when ALWAYS_FETCH_FROM_REPOSITORY is enabled");
 		}
-		let translatorMetadata = await Zotero.Connector.callMethod("getTranslators", {});
-		Zotero.Prefs.set("connector.repo.lastCheck.localTime", Date.now());
-		return translatorMetadata;
+		return Zotero.Connector.callMethod("getTranslatorManifest", {});
 	}
 	
 	/**

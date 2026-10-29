@@ -18,3 +18,7 @@ button { padding: 6px 14px; border-radius: 4px; border: 1px solid var(--accent);
 button.quiet { background: transparent; color: var(--fg); border-color: var(--line); }
 button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 .foot { color: var(--muted); font-size: 12px; margin: 14px 0 0; }
+details.proxy { margin: 12px 0 0; }
+details.proxy summary { cursor: pointer; color: var(--muted); }
+details.proxy label { display: block; margin: 8px 0 4px; font-size: 12px; color: var(--muted); }
+details.proxy input { box-sizing: border-box; width: 100%; padding: 5px 8px; margin: 0 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); font: inherit; }

@@ -4,3 +4,6 @@ cert
 config.sh
 dist
 node_modules
+
+# Generated from a signed translator set by scripts/sync-translator-baseline.mjs; rebuilt per release.
+translator-baseline/

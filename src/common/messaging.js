@@ -181,6 +181,17 @@ Zotero.Messaging = new function() {
 				return;
 			}
 
+			// Abstractus: nothing from a blocked site (login, mail, bank, our own app...) is handled,
+			// so no translator result, save or attachment from it ever reaches the desktop.
+			const deniedWhy = Zotero.SiteBlocklist && Zotero.SiteBlocklist.contentCallDenied(request[0], request[1], sender);
+			if (deniedWhy) {
+				return Promise.resolve(['error', JSON.stringify({name: 'Error', message: 'Not allowed from a web page (' + deniedWhy + ')'})]);
+			}
+			const blockedWhy = Zotero.SiteBlocklist && Zotero.SiteBlocklist.senderBlocked(sender);
+			if (blockedWhy) {
+				return Promise.resolve(['error', JSON.stringify({name: 'Error', message: 'Abstractus does not run on this site (' + blockedWhy + ')'})]);
+			}
+
 			return Zotero.Messaging.receiveMessage(request[0], request[1], sender.tab, sender.frameId)
 			.catch(function(err) {
 				// Zotero.logError(err);

@@ -229,6 +229,7 @@ Zotero.Connector_Browser = new function() {
 	 * Called when translators are available for a given page
 	 */
 	this.onTranslators = function(translators, instanceID, contentType, tab, frameId) {
+		if (_isBlockedSite(tab.url)) return;
 		_enableForTab(tab.id);
 		let tabInfo = this.getTabInfo(tab.id);
 
@@ -399,6 +400,7 @@ Zotero.Connector_Browser = new function() {
 	 * @returns {Promise} A promise that resolves when all scripts have been injected
 	 */
 	this.injectTranslationScripts = async function(tab, frameId=0, url=null) {
+		if (_isBlockedSite(tab.url) || (url && !/^(about:|blob:|data:)/i.test(url) && _isBlockedSite(url))) return;
 		// Prevent triggering multiple times
 		let key = tab.id+'-'+frameId;
 		let deferred = this.injectTranslationScripts[key];
@@ -626,9 +628,6 @@ Zotero.Connector_Browser = new function() {
 		this.openTab(browser.runtime.getURL(`preferences/preferences.html#${paneID}`), tab);
 	};
 	
-	this.openConfigEditor = function(tab) {
-		this.openTab(browser.runtime.getURL(`preferences/config.html`), tab);
-	};
 	
 	this.waitForTabToLoad = async function(tab) {
 		if (typeof tab === 'number') {
@@ -710,11 +709,17 @@ Zotero.Connector_Browser = new function() {
 		}
 
 		let isDisabled = _isDisabledForURL(url, true)
+		if (isDisabled && _isBlockedSite(url)) {
+			// Abstractus never touches this site: show it is off, keep the button clickable for the notice.
+			_showBlockedButton(tab, url);
+			return;
+		}
 		if (isDisabled) {
 			_showZoteroStatus(tab.id, isDisabled);
 			return;
 		} else {
 			_enableForTab(tab.id);
+			browser.action.setBadgeText({tabId: tab.id, text: ''});
 		}
 
 		let tabInfo = this.getTabInfo(tab.id);
@@ -901,6 +906,30 @@ Zotero.Connector_Browser = new function() {
 			return;
 		}
 		browser.action.enable(tabID);
+	}
+
+	// A site on the blocklist: greyed icon, "off" badge, a tooltip with the category. The button stays
+	// enabled only so a click can open the notice (see _browserAction); nothing is ever saved from here.
+	function _blockedTitle(url) {
+		const category = Zotero.SiteBlocklist.categoryFor(url);
+		return 'Abstractus is off on this site' + (category ? ' (' + category + ')' : '');
+	}
+
+	function _showBlockedButton(tab, url) {
+		browser.action.setIcon({tabId: tab.id, path: 'images/zotero-z-16px-offline.png'});
+		browser.action.setTitle({tabId: tab.id, title: _blockedTitle(url)});
+		browser.action.setBadgeText({tabId: tab.id, text: 'off'});
+		if (browser.action.setBadgeBackgroundColor) browser.action.setBadgeBackgroundColor({tabId: tab.id, color: '#6b7280'});
+		browser.action.enable(tab.id);
+		browser.contextMenus.removeAll();
+	}
+
+	async function _showBlockedNotice(tab) {
+		const category = Zotero.SiteBlocklist.categoryFor(tab.url);
+		await browser.windows.create({
+			url: browser.runtime.getURL('preferences/blocked.html') + '?c=' + encodeURIComponent(category),
+			type: 'popup', width: 380, height: 300, focused: true
+		});
 	}
 
 	function _showTranslatorIcon(tab, translator) {
@@ -1093,6 +1122,11 @@ Zotero.Connector_Browser = new function() {
 		tabInfo.url = url;
 	}
 
+	// Abstractus hard blocklist (src/common/siteBlocklist.js). Own extension pages are not "sites".
+	function _isBlockedSite(url) {
+		return !!url && !url.startsWith(browser.runtime.getURL('')) && Zotero.SiteBlocklist.isBlockedUrl(url);
+	}
+
 	function _isDisabledForURL(url, excludeTests=false) {
 		const isFileURL = url.startsWith('file:');
 		const isExtensionPage = url.includes('-extension://');
@@ -1107,6 +1141,10 @@ Zotero.Connector_Browser = new function() {
 			return Zotero.getString('extensionIsDisabled_extensionPage', [ZOTERO_CONFIG.CLIENT_NAME])
 		}
 		if (!isHttpPage) {
+			return Zotero.getString('extensionIsDisabled', [ZOTERO_CONFIG.CLIENT_NAME])
+		}
+		// Abstractus: login, mail, bank, cloud console and our own sites are never worked on.
+		if (_isBlockedSite(url)) {
 			return Zotero.getString('extensionIsDisabled', [ZOTERO_CONFIG.CLIENT_NAME])
 		}
 		return false;
@@ -1141,6 +1179,11 @@ Zotero.Connector_Browser = new function() {
 	}
 
 	async function _browserAction(tab) {
+		// Abstractus: a site on the blocklist only gets the notice. Nothing is read, saved or sent.
+		if (tab && _isBlockedSite(tab.url)) {
+			await _showBlockedNotice(tab);
+			return;
+		}
 		// Abstractus: a queue started in the desktop app is worked from the toolbar button.
 		if (Zotero.Retrieval && await Zotero.Retrieval.onToolbarClick(tab)) return;
         const connection = await Zotero.Connector.getConnectionState();
@@ -1196,6 +1239,7 @@ Zotero.Connector_Browser = new function() {
 	 * @returns {Promise<*>}
 	 */
 	this.saveWithTranslator = function(tab, i, options={}) {
+		if (_isBlockedSite(tab.url)) return Promise.reject(new Error('Abstractus does not run on this site'));
 		let tabInfo = this.getTabInfo(tab.id);
 		var translator = tabInfo.translators[i];
 		
@@ -1214,6 +1258,7 @@ Zotero.Connector_Browser = new function() {
 	}
 	
 	this.saveAsWebpage = async function(tab, frameId, options={}) {
+		if (_isBlockedSite(tab.url)) throw new Error('Abstractus does not run on this site');
 		let tabInfo = this.getTabInfo(tab.id);
 		if (tabInfo.uninjectable) {
 			return Zotero.Utilities.saveWithoutProgressWindow(tab, frameId);
