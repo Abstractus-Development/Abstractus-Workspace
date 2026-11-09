@@ -1,0 +1,70 @@
+{
+	"name": "Abstractus Connector",
+	"manifest_version": 3,
+	"version": "AUTOFILLED",
+	"description": "__MSG_extension_description__",
+	"default_locale": "en",
+	"action": {
+		"default_icon": {
+			"16": "Icon-16.png",
+			"32": "Icon-32.png",
+			"48": "Icon-48.png"
+		},
+		"default_title": "__MSG_extension_defaultTitle__"
+	},
+	"host_permissions": ["http://127.0.0.1/*", "https://repo.zotero.org/*", "http://*/*", "https://*/*"],
+	"permissions": ["tabs", "contextMenus", "cookies", "scripting", "offscreen",
+		"webRequest", "declarativeNetRequest", "webNavigation", "storage", "nativeMessaging", "alarms"],
+	"optional_permissions": ["clipboardWrite"],
+	"background": {
+		"service_worker": "background-worker.js"
+	},
+	"content_scripts": [
+		{
+			"matches": ["http://*/*", "https://*/*"],
+			"exclude_matches": [__EXCLUDE_MATCHES__],
+			"run_at": "document_start",
+			"js": [__INJECT_SCRIPTS__]
+		}
+	],
+	"sandbox": {
+		"pages": ["offscreen/offscreenSandbox.html"]
+	},
+	"web_accessible_resources": [{
+		"resources": [
+			"images/*",
+			"progressWindow/progressWindow.html",
+			"modalPrompt/modalPrompt.html",
+			"test/data/journalArticle-single.html",
+			"browserAttachmentMonitor/browserAttachmentMonitor.html",
+			"lib/SingleFile/single-file-hooks-frames.js",
+			"inject/pageSaving.js",
+			"translateWeb.js",
+			"itemSaver.js"
+		],
+		"matches": ["http://*/*", "https://*/*"]
+	}],
+	"content_security_policy": {
+		"extension_pages": "script-src 'self'; object-src 'self'"
+	},
+	"homepage_url": "https://www.abstractus.ai/",
+	"icons": {
+		"16": "Icon-16.png",
+		"32": "Icon-32.png",
+		"48": "Icon-48.png",
+		"64": "Icon-64.png",
+		"128": "Icon-128.png"
+	},
+	"options_ui": {
+		"page": "preferences/preferences.html",
+		"open_in_tab": true
+	},
+	"commands": {
+		"_execute_action": {
+			"suggested_key": {
+				"default": "Ctrl+Shift+A"
+			}
+		}
+	},
+	"minimum_chrome_version": "88"
+}

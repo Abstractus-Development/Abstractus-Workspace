@@ -1,0 +1,567 @@
+{
+	"general_saveTo": {
+		"message": "Save to $1"
+	},
+	"general_more": {
+		"message": "More…"
+	},
+	"general_moreInfo": {
+		"message": "More Info…"
+	},
+	"general_needHelp": {
+		"message": "Need help?"
+	},
+	"general_done": {
+		"message": "Done"
+	},
+	"general_yes": {
+		"message": "Yes"
+	},
+	"general_no": {
+		"message": "No"
+	},
+	"general_tryAgain": {
+		"message": "Try Again"
+	},
+	"general_warning": {
+		"message": "Warning"
+	},
+	"general_continue": {
+		"message": "Continue"
+	},
+	"general_continueAnyway": {
+		"message": "Continue Anyway"
+	},
+	"general_dontWarnAgain": {
+		"message": "Don't Warn Again"
+	},
+	"general_dontShowAgain": {
+		"message": "Don’t Show Again"
+	},
+	"general_ok": {
+		"message": "OK"
+	},
+	"general_cancel": {
+		"message": "Cancel"
+	},
+	"general_selectAll": {
+		"message": "Select All"
+	},
+	"general_deselectAll": {
+		"message": "Deselect All"
+	},
+	"general_pleaseWait": {
+		"message": "Please wait…"
+	},
+	"general_copyToClipboard": {
+		"message": "Copy to Clipboard"
+	},
+	"general_copied": {
+		"message": "Copied"
+	},
+	"general_preferences": {
+		"message": "Preferences"
+	},
+	"extension_description": {
+		"message": "Save papers, PDFs and references from your browser to Abstractus Desktop in one click"
+	},
+	"extension_defaultTitle": {
+		"message": "Save to Abstractus"
+	},
+	"browserAction_status_online": {
+		"message": "$1 Desktop is running",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"browserAction_status_offline": {
+		"message": "$1 Desktop is not running",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"browserAction_saveWebpageWithSnapshot": {
+		"message": "Save to $1 (Web Page with Snapshot)",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"browserAction_saveWebpageWithoutSnapshot": {
+		"message": "Save to $1 (Web Page)",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"browserAction_savePDF": {
+		"message": "Save to $1 (PDF)",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"browserAction_saveWithTranslator": {
+		"message": "Save to $1 ($2)",
+		"description": "$1 is the client name (Abstractus); $2 is the name of a translator"
+	},
+	"browserAction_saving": {
+		"message": "Saving…"
+	},
+	"browserAction_saved": {
+		"message": "Saved!"
+	},
+	"browserAction_saveFailed": {
+		"message": "Saving failed. Is $1 Desktop running?",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"contextMenu_saveWithNote": {
+		"message": "Create $1 Item and Note from Selection",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"browserAction_incompatibleVersion": {
+		"message": "$1 Connector $2 is incompatible with the running version of $1 Desktop$3. The Connector will continue to operate, but saving may be unavailable.\n\nPlease update both $1 Desktop and the $1 Connector to the latest versions.",
+		"description": "$1 is the client name (Abstractus); $2 is the Connector version; $3 is the client version in parentheses or an empty string"
+	},
+	"expiredBetaBuild_title": {
+		"message": "Build Expired"
+	},
+	"expiredBetaBuild_message": {
+		"message": "This $1 Connector beta build has expired. Please install the latest version.",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"itemType_webpage": {
+		"message": "Web Page"
+	},
+	"itemType_pdf": {
+		"message": "PDF attachment"
+	},
+	"itemType_epub": {
+		"message": "EPUB attachment"
+	},
+	"itemType_snapshot": {
+		"message": "Snapshot"
+	},
+	"itemType_note": {
+		"message": "Note"
+	},
+	"itemType_link": {
+		"message": "Web link"
+	},
+	"itemType_attachment": {
+		"message": "Attachment"
+	},
+	"progressWindow_savingTo": {
+		"message": "Saving to"
+	},
+	"progressWindow_saveAsWebpage": {
+		"message": "Save as Webpage"
+	},
+	"progressWindow_detailsBtnView": {
+		"message": "View details"
+	},
+	"progressWindow_detailsBtnHide": {
+		"message": "Hide details"
+	},
+	"progressWindow_collectionSelector": {
+		"message": "Target collection selector"
+	},
+	"progressWindow_savingItems": {
+		"message": "Saving $1 items. $2"
+	},
+	"progressWindow_savingItem": {
+		"message": "Saving item $1"
+	},
+	"progressWindow_saveItem": {
+		"message": "Item $1: $2"
+	},
+	"progressWindow_downloadComplete": {
+		"message": "Saved $1"
+	},
+	"progressWindow_downloadCompletePlural": {
+		"message": "Saved $1 for item $2"
+	},
+	"progressWindow_downloadFailed": {
+		"message": "Failed download of $1"
+	},
+	"progressWindow_downloadFailedPlural": {
+		"message": "Failed download of $1 for item $2"
+	},
+	"progressWindow_allDone": {
+		"message": "Saving is complete. The dialog will close now."
+	},
+	"progressWindow_alreadySaved": {
+		"message": "Items from this webpage have already been saved."
+	},
+	"progressWindow_tagPlaceholder": {
+		"message": "Add tags"
+	},
+	"progressWindow_removeTag": {
+		"message": "Click to remove tag"
+	},
+	"progressWindow_filterPlaceholder": {
+		"message": "Filter collections"
+	},
+	"progressWindow_noteEditorPlaceholder": {
+		"message": "Add a note"
+	},
+	"progressWindow_error_translation": {
+		"message": "An error occurred while reading this page. Try again, or save it as a web page instead."
+	},
+	"progressWindow_error_siteAccessLimitsError": {
+		"message": "An error occurred while saving this item. $1 may limit the number of items you can save at once. Wait a moment and try again.",
+		"description": "$1 is the failing translator label (e.g., Google Scholar)"
+	},
+	"progressWindow_error_fallback": {
+		"message": "An error occurred saving with $1. Attempting to save using $2 instead.",
+		"description": "The placeholders will contain the names of site translators (e.g., JSTOR or Embedded Metadata)."
+	},
+	"progressWindow_error_upgradeClient": {
+		"message": "This feature is not supported by your version of $1 Desktop. Please update to the latest version.",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"progressWindow_error_noTranslator": {
+		"message": "No items could be saved because this website is not supported by any $1 translator.",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"progressWindow_error_collectionNotEditable": {
+		"message": "The currently selected collection is not editable. Please select a different collection in $1.",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"progressWindow_error_clientRequired": {
+		"message": "This item could not be saved because $1 Desktop is not open or is unreachable. Open $1 Desktop and try again."
+	},
+	"progressWindow_error_unexpected": {
+		"message": "An error occurred while saving this item. Please try again."
+	},
+	"progressWindow_OA_searching": {
+		"message": "Searching for open-access version…"
+	},
+	"itemSelector_title": {
+		"message": "Select the items you’d like to add to your library:"
+	},
+	"itemSelector_pattern": {
+		"message": "Pattern"
+	},
+	"itemSelector_windowTitle": {
+		"message": "$1 — Select Items",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"preferences_title": {
+		"message": "$1 Connector Preferences",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"preferences_general": {
+		"message": "General"
+	},
+	"preferences_proxies": {
+		"message": "Proxies"
+	},
+	"preferences_advanced": {
+		"message": "Advanced"
+	},
+	"preferences_zoteroStatus": {
+		"message": "$1 Desktop"
+	},
+	"preferences_zoteroStatus_connected": {
+		"message": "Connected"
+	},
+	"preferences_zoteroStatus_disconnected": {
+		"message": "Not running"
+	},
+	"preferences_zoteroStatus_available": {
+		"message": "$1 Desktop is running. Items you save are added to your library."
+	},
+	"preferences_zoteroStatus_unavailable": {
+		"message": "$1 Desktop isn’t reachable. Open the app to start saving — the Connector talks to it at $2.",
+		"description": "$1 is the client name (Abstractus); $2 is the local connector address"
+	},
+	"preferences_zoteroStatus_update": {
+		"message": "Check Again"
+	},
+	"preferences_saving": {
+		"message": "Saving"
+	},
+	"preferences_saving_howTo": {
+		"message": "Click the Connector button in your toolbar, or press $1, on any article, search result or PDF. Metadata is detected automatically and the PDF is downloaded when it’s available.",
+		"description": "$1 is the keyboard shortcut"
+	},
+	"preferences_saving_collections": {
+		"message": "Choose a collection from the save popup to file items as you save them."
+	},
+	"preferences_errors": {
+		"message": "Error Log"
+	},
+	"preferences_reportErrors_none": {
+		"message": "No errors have been logged."
+	},
+	"preferences_reportErrors_subtitle": {
+		"message": "The following errors have occurred since the $1 Connector was started:",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"preferences_debugOutput": {
+		"message": "Debug Output Logging"
+	},
+	"preferences_debugOutput_description": {
+		"message": "Debug output can help diagnose problems with saving. Logging may slow down your browser, so leave it disabled unless you are troubleshooting."
+	},
+	"preferences_debugOutput_enable": {
+		"message": "Enable logging"
+	},
+	"preferences_debugOutput_enableAtStartup": {
+		"message": "Enable at startup"
+	},
+	"preferences_debugOutput_linesLogged": {
+		"message": "$1 lines logged"
+	},
+	"preferences_debugOutput_view": {
+		"message": "View Output"
+	},
+	"preferences_debugOutput_clear": {
+		"message": "Clear Output"
+	},
+	"preferences_translators": {
+		"message": "Site Translators"
+	},
+	"preferences_translators_description": {
+		"message": "Translators read citation metadata from thousands of publisher and database websites. They update automatically every day, so fixes for sites that change reach you without updating the Connector."
+	},
+	"preferences_translators_reset": {
+		"message": "Reset Translators"
+	},
+	"preferences_translators_resetting": {
+		"message": "Resetting translators…"
+	},
+	"preferences_translators_updated": {
+		"message": "Translators updated!"
+	},
+	"preferences_translators_updateFailed": {
+		"message": "Translator update failed"
+	},
+	"preferences_configEditor": {
+		"message": "Advanced Configuration"
+	},
+	"preferences_configEditor_description": {
+		"message": "Edit low-level Connector settings. Changing these can break saving — only proceed if you know what you’re doing."
+	},
+	"preferences_configEditor_open": {
+		"message": "Open Config Editor"
+	},
+	"preferences_proxySettings": {
+		"message": "Proxy Settings"
+	},
+	"preferences_proxySettings_description": {
+		"message": "$1 can recognize and reuse your institution’s EZproxy or OpenAthens access. Sign in through your institution as usual; the Connector does not provide a subscription or bypass access restrictions.",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"preferences_proxySettings_configured": {
+		"message": "Configured Proxies"
+	},
+	"preferences_proxySettings_enable": {
+		"message": "Enable proxy redirection"
+	},
+	"preferences_proxySettings_showRedirectNotification": {
+		"message": "Show a notification when redirecting through a proxy"
+	},
+	"preferences_proxySettings_autoRecognize": {
+		"message": "Automatically detect new proxies"
+	},
+	"preferences_proxySettings_disableByDomain": {
+		"message": "Disable proxy redirection when my domain name contains",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"preferences_proxySettings_redirectLoop": {
+		"message": "$1 detected a proxy redirect loop and has temporarily suspended automatic proxy redirection.",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"preferences_proxySettings_reenable": {
+		"message": "Re-enable proxy redirection"
+	},
+	"preferences_proxySettings_urlRewritingProxy": {
+		"message": "URL-rewriting proxy (e.g., EZproxy)"
+	},
+	"preferences_proxySettings_openAthens": {
+		"message": "OpenAthens"
+	},
+	"preferences_proxySettings_loginURLScheme": {
+		"message": "Login URL Scheme:"
+	},
+	"preferences_proxySettings_proxiedURLScheme": {
+		"message": "Proxied URL Scheme:"
+	},
+	"preferences_proxySettings_openAthensDomain": {
+		"message": "OpenAthens Redirector Domain:"
+	},
+	"preferences_proxySettings_autoAssociate": {
+		"message": "Automatically associate new hosts"
+	},
+	"preferences_proxySettings_variables": {
+		"message": "You may use the following variables in your proxy schemes:"
+	},
+	"preferences_proxySettings_variableHost": {
+		"message": "%h - The hostname of the proxied site (e.g., www.example.com)"
+	},
+	"preferences_proxySettings_variablePath": {
+		"message": "%p - The path of the proxied page excluding the leading slash (e.g., about/index.html)"
+	},
+	"preferences_proxySettings_variableURL": {
+		"message": "%u - Full encoded proxied site url (e.g. https://www.example.com/about/index.html)"
+	},
+	"preferences_proxySettings_hostnames": {
+		"message": "Hostnames"
+	},
+	"preferences_proxySettings_hostname": {
+		"message": "Hostname:"
+	},
+	"preferences_proxySettings_addHostname": {
+		"message": "Add Hostname"
+	},
+	"preferences_proxySettings_removeHostname": {
+		"message": "Remove Hostname"
+	},
+	"preferences_proxySettings_addProxy": {
+		"message": "Add Proxy"
+	},
+	"preferences_proxySettings_removeProxy": {
+		"message": "Remove Proxy"
+	},
+	"proxy_settings": {
+		"message": "Proxy Settings"
+	},
+	"proxy_accept": {
+		"message": "Accept"
+	},
+	"proxy_dontProxy": {
+		"message": "Don’t Proxy This Site"
+	},
+	"proxy_newProxy_title": {
+		"message": "New Proxy"
+	},
+	"proxy_newProxy_message": {
+		"message": "$1 detected that you are accessing $2 through a proxy. Would you like to automatically redirect future requests to $2 through $3?",
+		"description": "$1 is the client name (Abstractus); $2 is a website hostname; $3 is a proxy name"
+	},
+	"proxy_addProxy_title": {
+		"message": "Only add proxies linked from your library, school, or corporate website"
+	},
+	"proxy_addProxy_message": {
+		"message": "Adding other proxies allows malicious sites to masquerade as sites you trust.<br/><br/>Adding this proxy will allow $1 to recognize items from proxied pages and will automatically redirect future requests to $2 through $3.",
+		"description": "$1 is the client name (Abstractus); $2 is a website hostname; $3 is a proxy name"
+	},
+	"proxy_addProxy": {
+		"message": "Add Proxy"
+	},
+	"proxy_newHost_title": {
+		"message": "New Proxy Host"
+	},
+	"proxy_newHost_message": {
+		"message": "$1 automatically associated $2 with a previously defined proxy. Future requests to this site will be redirected through $3.",
+		"description": "$1 is the client name (Abstractus); $2 is a website hostname; $3 is a proxy name"
+	},
+	"proxy_redirect_title": {
+		"message": "$1 Proxy Redirection",
+		"description": "$1 is the client name (Abstractus)"
+	},
+	"proxy_redirect_message": {
+		"message": "$1 automatically redirected your request to $2 through the proxy at $3.",
+		"description": "$1 is the client name (Abstractus); $2 is a website hostname; $3 is a proxy name"
+	},
+	"extensionIsDisabled": {
+		"message": "$1 Connector is not available on this page"
+	},
+	"extensionIsDisabled_fileURL": {
+		"message": "$1 Connector is not available on file URLs"
+	},
+	"extensionIsDisabled_extensionPage": {
+		"message": "$1 Connector is not available on extension pages"
+	},
+	"appConnector": {
+		"message": "$1 Connector"
+	},
+	"upgradeApp": {
+		"message": "Upgrade $1"
+	},
+	"firstRun_title": {
+		"message": "Welcome to the $1 Connector"
+	},
+	"firstRun_text1": {
+		"message": "Save articles, PDFs and search results to your $1 library from any website with a single click."
+	},
+	"firstRun_text2": {
+		"message": "Saving requires the $1 Desktop app to be open. If you haven’t installed it yet, <a href=\"$2\">get $1 Desktop</a>."
+	},
+	"firstRun_acceptButton": {
+		"message": "Got it",
+		"description": "The Accept button for the first-run dialog"
+	},
+	"error_connection_isAppRunning": {
+		"message": "Is $1 Desktop Running?"
+	},
+	"error_connection_save": {
+		"message": "The Connector couldn’t reach the $1 Desktop app. Open $1 Desktop, then try saving again."
+	},
+	"error_connection_download": {
+		"message": "Don’t have it yet? <a href=\"$1\">Get $2 Desktop</a>."
+	},
+	"copyUnproxiedLink": {
+		"message": "Copy Unproxied Link"
+	},
+	"copyUnproxiedPageURL": {
+		"message": "Copy Unproxied Page URL"
+	},
+	"reloadViaProxy": {
+		"message": "Reload via Proxy"
+	},
+	"reloadVia": {
+		"message": "Reload via $1"
+	},
+	"proxy_validate_hostProxyExists": {
+		"message": "A proxy is already defined for $1. Please remove the entry in the existing proxy or change the hostname."
+	},
+	"proxy_validate_schemeDuplicate": {
+		"message": "A proxy with the same login URL scheme is already defined. Please remove the existing proxy or change the login URL scheme."
+	},
+	"proxy_validate_schemeInvalid": {
+		"message": "The Proxied URL scheme is invalid. Please enter a valid proxied URL scheme."
+	},
+	"proxy_validate_schemeNoPath": {
+		"message": "The login URL scheme does not contain a path (%p). Please enter a valid login URL scheme."
+	},
+	"proxy_validate_openAthens_domainInvalid": {
+		"message": "The OpenAthens redirector domain is invalid. Please enter a valid OpenAthens redirector domain."
+	},
+	"permissions_siteAccess_title": {
+		"message": "Site Access Permissions Required"
+	},
+	"permissions_siteAccess_recommendation_title": {
+		"message": "Site Access Permissions Recommended"
+	},
+	"permissions_siteAccess_openPreferences": {
+		"message": "Open Extension Preferences"
+	},
+	"permissions_siteAccess_message_intro": {
+		"message": "<p>Abstractus Connector requires permission to run on all websites to function properly.</p>"
+	},
+	"permissions_siteAccess_message": {
+		"message": "<p>To enable this, change the \"Site Access\" setting to \"On all sites\" in the Extension Preferences page.</p>"
+	},
+	"permissions_siteAccess_message_safari_functionality": {
+		"message": "<p>For full Abstractus Connector functionality, allow the Connector to run on all websites.</p>"
+	},
+	"permissions_siteAccess_message_safari": {
+		"message": "<p>To enable this, open Safari Settings, select <b>Websites</b> at the top, select <b>$1</b> in the sidebar, and change the <b>For other websites</b> option to <b>Allow</b>.</p>",
+		"description": "$1 is the connector name"
+	},
+	"permissions_siteAccess_message_localhost_required": {
+		"message": "<p>To communicate with Abstractus Desktop, the Connector requires access to <b>127.0.0.1</b>, an address that refers to your own computer.</p>"
+	},
+	"permissions_siteAccess_message_repo_required": {
+		"message": "<p>Access to <b>repo.zotero.org</b> is required to download site translators.</p>"
+	},
+	"permissions_siteAccess_message_domain_safari": {
+		"message": "<p>To enable this, open Safari Settings, select <b>Websites</b> at the top, select <b>$1</b> in the sidebar, and set $2 to <b>Allow</b>.</p>",
+		"description": "$1 is the connector name; $2 is the required domain with markup"
+	},
+	"permissions_siteAccess_message_domains_safari": {
+		"message": "<p>To enable these, open Safari Settings, select <b>Websites</b> at the top, select <b>$1</b> in the sidebar, and set $2 to <b>Allow</b>.</p>",
+		"description": "$1 is the connector name; $2 is a list of required domains with markup"
+	},
+	"permissions_siteAccess_message_domains_allHosts_safari": {
+		"message": "<p>To enable these, open Safari Settings, select <b>Websites</b> at the top, select <b>$1</b> in the sidebar, set $2 to <b>Allow</b>, and change the <b>For other websites</b> option to <b>Allow</b>.</p>",
+		"description": "$1 is the connector name; $2 is a list of required domains with markup"
+	},
+	"permissions_siteAccess_message_nativePrompt_safari": {
+		"message": "<p>Safari may now ask whether to allow this access. Choose <b>Always Allow</b> to continue.</p>"
+	},
+	"permissions_siteAccess_message_allHosts_nativePrompt_safari": {
+		"message": "<p>For full Abstractus Connector functionality, allow the Connector to run on all websites by checking <b>Remember for other websites</b> in the same dialog.</p>",
+		"description": "All-websites recommendation shown when Safari's own permission dialog is expected to follow"
+	}
+}

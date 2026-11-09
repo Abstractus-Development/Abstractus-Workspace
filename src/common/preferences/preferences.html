@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="../theme.js"></script>
+		<link rel="stylesheet" type="text/css" media="screen" href="preferences.css" />
+		<title data-l10n-id="preferences_title" data-l10n-client-name>Abstractus Connector Preferences</title>
+	</head>
+	<body>
+		<div class="layout">
+			<aside class="sidebar">
+				<div class="brand">
+					<img class="brand-logo" src="../images/abstractus-logo.png" alt=""/>
+					<div class="brand-text">
+						<div class="brand-name">Abstractus</div>
+						<div class="brand-sub">Connector <span id="connector-version"></span></div>
+					</div>
+				</div>
+				<nav id="panes" aria-label="Preferences sections">
+					<a href="#general" id="pane-general" class="pane">
+						<svg class="pane-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h7"/><circle cx="17" cy="7" r="2.5"/><circle cx="14" cy="17" r="2.5"/></svg>
+						<span class="pane-label" data-l10n-id="preferences_general">General</span>
+					</a>
+					<a href="#proxies" id="pane-proxies" class="pane" style="display: none">
+						<svg class="pane-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.4 3.6 5.2 3.6 8.5s-1.1 6.1-3.6 8.5c-2.5-2.4-3.6-5.2-3.6-8.5S9.5 5.9 12 3.5z"/></svg>
+						<span class="pane-label" data-l10n-id="preferences_proxies">Proxies</span>
+					</a>
+				</nav>
+			</aside>
+
+			<main class="main">
+				<section id="content-general" class="content">
+					<header class="content-header">
+						<h1 data-l10n-id="preferences_general">General</h1>
+					</header>
+					<div class="card">
+						<div class="card-title" data-l10n-id="preferences_zoteroStatus" data-l10n-client-name>Abstractus Desktop</div>
+						<div class="card-body" id="client-status"></div>
+						<div class="card-body connect-actions" id="connect-actions" data-state="checking">
+							<button id="abstractus-pair-native" class="button primary connect-primary">Connect to Abstractus Desktop</button>
+							<button id="abstractus-pair-disconnect" class="button">Disconnect this browser</button>
+							<p id="abstractus-pair-status" role="status" aria-live="polite"></p>
+							<details class="connection-backup"><summary>Use a connection code instead</summary>
+								<p class="muted">In Desktop, open Library → Browser connections → Create connection code, then paste it here.</p>
+								<label for="abstractus-pair-code">Connection code</label>
+								<input id="abstractus-pair-code" type="password" autocomplete="off" spellcheck="false"/>
+								<div class="actions"><button id="abstractus-pair-connect" class="button">Connect with code</button></div>
+							</details>
+						</div>
+					</div>
+					<div class="card">
+						<div class="card-title">Appearance</div>
+						<div class="card-body">
+							<label for="appearance-select">Save popup and Connector pages</label>
+							<select id="appearance-select" class="select">
+								<option value="contrast">Contrast with the page (dark popup on light pages, light on dark)</option>
+								<option value="dark">Always dark</option>
+								<option value="light">Always light</option>
+								<option value="system">Match the browser theme</option>
+							</select>
+						</div>
+					</div>
+					<div class="card">
+						<div class="card-title" data-l10n-id="preferences_saving">Saving</div>
+						<div class="card-body">
+							<p id="saving-how-to"></p>
+							<p class="muted" data-l10n-id="preferences_saving_collections">Choose a collection from the save popup to file items as you save them.</p>
+						</div>
+					</div>
+
+					<div class="card" id="blocked-sites-card">
+						<div class="card-title">Sites Abstractus never touches</div>
+						<div class="card-body">
+							<p class="muted">To protect patient data, accounts and your network, Abstractus does nothing on these sites: it does not read, save or send anything.</p>
+							<div id="blocked-sites-list"></div>
+						</div>
+					</div>
+				</section>
+
+				<section id="content-proxies" class="content"></section>
+			</main>
+		</div>
+		<script type="text/javascript" src="../browser-polyfill.js"></script>
+		<script type="text/javascript" src="../lib/react.js"></script>
+		<script type="text/javascript" src="../lib/react-dom.js"></script>
+		<script type="text/javascript" src="../zotero_config.js"></script>
+		<script type="text/javascript" src="../zotero.js"></script>
+		<script type="text/javascript" src="../siteBlocklist.js"></script>
+		<script type="text/javascript" src="../errors_webkit.js"></script>
+		<script type="text/javascript" src="../http.js"></script>
+		<script type="text/javascript" src="../inject/http.js"></script>
+		<script type="text/javascript" src="../connector.js"></script>
+		<script type="text/javascript" src="../utilities/utilities.js"></script>
+		<script type="text/javascript" src="../utilities.js"></script>
+		<script type="text/javascript" src="../translate/promise.js"></script>
+		<script type="text/javascript" src="../messages.js"></script>
+		<script type="text/javascript" src="../messaging_inject.js"></script>
+		<script type="text/javascript" src="../zoteroFrame.js"></script>
+		<script type="text/javascript" src="../inject/modalPrompt_inject.js"></script>
+		<script type="text/javascript" src="../i18n.js"></script>
+		<script type="text/javascript" src="../i18n_common.js"></script>
+		<script type="text/javascript" src="preferences.js"></script>
+		__BEGIN_DEBUG__
+		<script type="text/javascript" src="../lib/sinon.js"></script>
+		__END_DEBUG__
+	<script src="pairing-settings.js"></script>
+</body>
+</html>
