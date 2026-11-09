@@ -1,29 +1,29 @@
-let offscreenSandboxReadyPromise = new Promise((resolve) => {
-	self.onmessage = async (e) => {
-		if (e.data === 'offscreen-sandbox-ready') {
-			self.onmessage = null;
-			resolve();
-		}
-	}
-});
+let managerMessaging;
+const frameManager = Zotero.TranslateHostFrameManager;
 
 async function init() {
-	console.log('Offscreen: awaiting offscreen sandbox to be ready')
-	await offscreenSandboxReadyPromise;
-	
+	console.log('Offscreen: initializing translate host frame manager messaging');
 	let messageChannel = new MessageChannel();
-	const iframe = document.querySelector('iframe');
-	iframe.contentWindow.postMessage('offscreen-port', "*", [messageChannel.port1]);
+	let options = {
+		functionOverrides: FRAME_MANAGER_FUNCTIONS,
+		handlerFunctionOverrides: FRAME_MANAGER_MESSAGE_FUNCTIONS,
+		overrideTarget: Zotero,
+		sendMessage: (...args) => messageChannel.port1.postMessage(args),
+		addMessageListener: fn => {
+			messageChannel.port1.onmessage = (event) => fn(event.data);
+		}
+	};
+	if (managerMessaging) {
+		managerMessaging.reinit(options);
+	}
+	else {
+		managerMessaging = new Zotero.MessagingGeneric(options);
+	}
 
-	console.log('Offscreen: awaiting offscreen sandbox to prepare for service worker connection')
-	await new Promise((resolve) => {
-		messageChannel.port2.onmessage = resolve;
-	});
-	messageChannel.port2.onmessage = null;
-	
 	const backgroundServiceWorker = await navigator.serviceWorker.ready;
 	backgroundServiceWorker.active.postMessage('offscreen-port', [messageChannel.port2]);
-	console.log('Offscreen: messaging ports posted');
+	console.log('Offscreen: messaging port posted');
+	await managerMessaging.sendMessage('TranslateHostFrameManager.initialized');
 }
 
 document.addEventListener('DOMContentLoaded', () => init());

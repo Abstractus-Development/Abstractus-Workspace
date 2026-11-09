@@ -19,7 +19,7 @@ Zotero.Translators = new function() {
 				let signed = await Zotero.TranslatorTrust.load();
 				let adopted = await Zotero.TranslatorTrust.loadBundled();
 				if (adopted) signed = Zotero.TranslatorTrust.getActive();
-				let translators = signed ? signed.metadata : Zotero.Prefs.get("translatorMetadata");
+				let translators = signed ? signed.metadata : (Zotero.TranslatorTrust.hasPinnedKeys() ? [] : Zotero.Prefs.get("translatorMetadata"));
 				if (typeof translators !== "object" || !translators.length) {
 					Zotero.debug(`Translators: First time launch, getting all translators.`);
 					await this.updateFromRemote(true);
@@ -137,7 +137,7 @@ Zotero.Translators = new function() {
 		}
 		catch (e) {
 			Zotero.debug('Signed translators from the desktop unavailable or rejected: ' + e.message);
-			if (Zotero.TranslatorTrust.getActive()) {
+			if (Zotero.TranslatorTrust.getActive() || Zotero.TranslatorTrust.hasPinnedKeys()) {
 				return;
 			}
 			Zotero.debug('No signed translator set yet, attempting Repo');
@@ -309,6 +309,9 @@ Zotero.Translators = new function() {
 			Zotero.Prefs.set(Zotero.Translators.PREFS_TRANSLATOR_CODE_PREFIX + translator.translatorID, fresh);
 			translator.code = fresh;
 			return fresh;
+		}
+		if (Zotero.TranslatorTrust.hasPinnedKeys()) {
+			throw new Error(`Translator ${translator.translatorID} has no signed manifest`);
 		}
 		if (translator.code) return translator.code;
 		

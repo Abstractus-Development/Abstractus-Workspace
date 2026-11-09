@@ -57,7 +57,10 @@ Zotero.Retrieval = new function () {
 		}
 		const fetchAttachment = saver._fetchAttachment;
 		saver._fetchAttachment = function (attachment, tab, attemptBotProtectionBypass = true) {
-			if (watch && tab && tab.id === watch.tabId) attemptBotProtectionBypass = false;
+			if (watch && tab && tab.id === watch.tabId) {
+				attemptBotProtectionBypass = false;
+				if (watch.guard && !watch.guard.peek(attachment.url)) return Promise.reject(new Error('The attachment is outside this paper\'s allowed sites'));
+			}
 			return fetchAttachment.call(this, attachment, tab, attemptBotProtectionBypass);
 		};
 		Zotero.WebRequestIntercept.addListener('headersReceived', function (details) {
@@ -264,6 +267,7 @@ Zotero.Retrieval = new function () {
 		watch.pdfSession = null;
 		watch.status = 0;
 		ev.translatorSaved = !!(tabInfo.translators && tabInfo.translators.length);
+		if (!ev.translatorSaved && tabInfo.frameId > 0 && !(tabInfo.frameURL && watch.guard && watch.guard.peek(tabInfo.frameURL))) return 'no_pdf';
 		try {
 			const saving = (tabInfo.translators && tabInfo.translators.length)
 				? Zotero.Connector_Browser.saveWithTranslator(tab, 0, {fallbackOnFailure: true})

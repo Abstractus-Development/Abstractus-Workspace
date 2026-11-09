@@ -1,5 +1,12 @@
 let MessagingGeneric = class {
-	 
+	static serializeError(error) {
+		return Object.assign({
+			name: error?.name,
+			message: error?.message || String(error),
+			stack: error?.stack
+		}, error);
+	}
+
 	constructor(options={}) {
 		if (!options.sendMessage || !options.addMessageListener) {
 			throw new Error('MessagingGeneric: mandatory constructor options missing');
@@ -59,13 +66,15 @@ let MessagingGeneric = class {
 				let result;
 				try {
 					let fn = this._overrideTarget;
+					let owner;
 					for (let name of fnPath) {
+						owner = fn;
 						fn = fn[name];
 					}
 					if (messageConfig.handler && messageConfig.handler.postReceive) {
 						args = await messageConfig.handler.postReceive(args);
 					}
-					result = fn(...args);
+					result = fn.apply(owner, args);
 					if (typeof result === 'object' && result.then) {
 						result = await result;
 					}
@@ -106,11 +115,7 @@ let MessagingGeneric = class {
 					result = this._messageListeners[message](...payload);
 					if (typeof result === 'object' && result.then) result = await result;
 				} catch (e) {
-					result = ['error', JSON.stringify(Object.assign({
-						name: e.name,
-						message: e.message,
-						stack: e.stack
-					}, e))];
+					result = ['error', JSON.stringify(MessagingGeneric.serializeError(e))];
 				}
 				if (this._options.supportsResponse) {
 					return result;

@@ -22,7 +22,7 @@ Zotero.OffscreenManager = {
 				await browser.offscreen.createDocument({
 					url: this.offscreenUrl,
 					reasons: ['DOM_PARSER'],
-					justification: 'Scraping the document with Zotero Translators',
+					justification: 'Running Zotero Translators in isolated frames',
 				});
 			}
 			catch (e) {
@@ -35,40 +35,25 @@ Zotero.OffscreenManager = {
 		this.offscreenPageInitialized = true;
 
 		browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
-			this.sendMessage('tabClosed', [tabId]);
+			Zotero.TranslateHostFrameManager.destroyFramesForTab(tabId);
 		});
 		
 		setInterval(() => this.cleanup(), 15*60e3);
-		Zotero.debug('OffscreenManager: offscreen page initialized');
+		Zotero.debug('OffscreenManager: translate host frame manager initialized');
 	},
 
-	async sendMessage(message, payload, tab, frameId) {
-		const offscreenPage = await this.getOffscreenPage();
-		if (!offscreenPage) {
-			await this.init();
-		}
-		if (tab) {
-			payload.push(tab.id, frameId);
-		}
-		return await this._messaging.sendMessage(message, payload);
-	},
-
-	async addMessageListener(...args) {
-		const offscreenPage = await this.getOffscreenPage();
-		if (!offscreenPage) {
-			await this.init();
-		}
-		return this._messaging.addMessageListener(...args);
+	async ensureDocument() {
+		if (!await this.getOffscreenPage()) await this.init();
 	},
 
 	async cleanup() {
 		const offscreenPage = await this.getOffscreenPage();
 		if (!offscreenPage) return false;
 		let tabs = await browser.tabs.query({status: "complete", windowType: "normal"});
-		let cleanedUpTabIds = await this.sendMessage('translateCleanup', tabs.map(tab => tab.id));
+		let cleanedUpTabIds = await Zotero.TranslateHostFrameManager.cleanup(tabs.map(tab => tab.id));
 		if (cleanedUpTabIds.length > 0) {
-			Zotero.logError(new Error(`OffscreenManager: manually cleaned up translates that were kept `
-				+ `alive after onTabRemoved ${JSON.stringify(cleanedUpTabIds)}`));
+			Zotero.logError(new Error(`OffscreenManager: manually cleaned up frames that were kept `
+				+ `alive after tabs.onRemoved ${JSON.stringify(cleanedUpTabIds)}`));
 		}
 	},
 	
@@ -92,7 +77,8 @@ self.onmessage = async (e) => {
 	if (e.data === 'offscreen-port') {
 		Zotero.debug('OffscreenManager: received the offscreen page port')
 		let messagingOptions = {
-			handlerFunctionOverrides: OFFSCREEN_BACKGROUND_OVERRIDES,
+			functionOverrides: FRAME_MANAGER_MESSAGE_FUNCTIONS,
+			handlerFunctionOverrides: FRAME_MANAGER_FUNCTIONS,
 			overrideTarget: Zotero,
 		}
 		messagingOptions.sendMessage = (...args) => {
@@ -107,10 +93,13 @@ self.onmessage = async (e) => {
 		else {
 			Zotero.OffscreenManager._messaging = new Zotero.MessagingGeneric(messagingOptions);
 		}
+		Zotero.OffscreenManager._messaging.addMessageListener(
+			'TranslateHostFrameManager.initialized',
+			() => {
+				Zotero.debug('OffscreenManager: offscreen translate host frame manager initialized');
+				Zotero.OffscreenManager.messagingDeferred.resolve();
+			}
+		);
 		Zotero.debug('OffscreenManager: messaging initialized')
-		e.ports[0].postMessage(null);
-		await new Promise(resolve => Zotero.OffscreenManager._messaging.addMessageListener('offscreen-sandbox-initialized', resolve));
-		Zotero.debug('OffscreenManager: offscreen sandbox initialized message received')
-		Zotero.OffscreenManager.messagingDeferred.resolve();
 	}
 }

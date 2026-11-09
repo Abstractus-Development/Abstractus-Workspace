@@ -24,7 +24,6 @@ var injectInclude = [
 	'zotero.js',
 	'translate/promise.js',
 	'utilities/date.js',
-	'utilities/openurl.js',
 	'utilities/xregexp-all.js',
 	'utilities/xregexp-unicode-zotero.js',
 	'utilities/resource/zoteroTypeSchemaData.js',
@@ -36,18 +35,8 @@ var injectInclude = [
 	'proxy.js',
 	'translate/debug.js',
 	'utilities/schema.js',
-	'translate/rdf/init.js',
-	'translate/rdf/uri.js',
-	'translate/rdf/term.js',
-	'translate/rdf/identity.js',
-	'translate/rdf/rdfparser.js',
-	'translate/translation/translate.js',
-	'translate/translation/translate_item.js',
 	'translate/translator.js',
-	'translate/utilities_translate.js',
 	'inject/http.js',
-	'inject/sandboxManager.js',
-	'translateWeb.js',
 	'itemSaver.js',
 	'inject/pageSaving.js',
 	'cachedTypes.js',
@@ -71,13 +60,9 @@ if (argv.p) {
 		'tools/testTranslators/translatorTester_inject.js'
 	];
 }
-var injectIncludeFirefox = ['browser-polyfill.js'].concat(
+var injectIncludeBrowserExt = ['browser-polyfill.js'].concat(
 	injectInclude,
-	injectIncludeLast);
-
-var injectIncludeManifestV3 = ['browser-polyfill.js'].concat(
-	injectInclude,
-	['inject/virtualOffscreenTranslate.js'],
+	['inject/remoteTranslate.js'],
 	injectIncludeLast);
 
 const BROWSERS = ['manifestv3', 'firefox'];
@@ -124,17 +109,20 @@ if (!argv.p) {
 		'tools/testTranslators/translatorTester_background.js',
 		'lib/sinon.js');
 		
-	injectIncludeManifestV3.push('test/testInject.js');
+	injectIncludeBrowserExt.push('test/testInject.js');
 }
-var backgroundIncludeBrowserExt = ['browser-polyfill.js'].concat(backgroundInclude, [
+var backgroundIncludeBrowserExt = backgroundInclude.concat([
 	'hostPermissions.js',
 	'webRequestIntercept.js',
 	'saveWithoutProgressWindow.js',
 	'retrieval.js',
 	'messagingGeneric.js',
 	'browserAttachmentMonitor/browserAttachmentMonitor.js',
-	'offscreen/offscreenFunctionOverrides.js', 'background/offscreenManager.js',
+	'translateHost/translateHostFunctionOverrides.js',
+	'translateHost/translateHostFrameManager.js',
 ]);
+var backgroundIncludeManifestV3 = ['browser-polyfill.js'].concat(backgroundIncludeBrowserExt, ['background/offscreenManager.js']);
+var backgroundIncludeManifestV2 = backgroundIncludeBrowserExt.concat(['zoteroFrame.js']);
 
 var reloadChromiumTimeout;
 var chromiumReloadProcess;
@@ -244,7 +232,8 @@ function processFile() {
 			case 'preferences.html':
 			case 'progressWindow.html':
 			case 'modalPrompt.html':
-			case 'offscreenSandbox.html':
+			case 'translateHost.html':
+			case 'offscreen.html':
 				file.contents = Buffer.from(file.contents.toString()
 					.replace(/__BEGIN_DEBUG__([\s\S]*?)__END_DEBUG__/g, argv.p ? '' : '$1'));
 				break;
@@ -255,7 +244,7 @@ function processFile() {
 		if (type === 'common' || type === 'browserExt') {
 			if (file.path.includes('.html')) {
 				file.contents = Buffer.from(replaceScriptsHTML(
-					file.contents.toString(), "__SCRIPTS__", injectIncludeManifestV3.map(s => `../../${s}`)));
+					file.contents.toString(), "__SCRIPTS__", injectIncludeBrowserExt.map(s => `../../${s}`)));
 			}
 			for (let browser of BROWSERS) {
 				if (basename === 'manifest.json' && browser === 'manifestv3'
@@ -270,21 +259,20 @@ function processFile() {
 						parts[parts.length - 1] = 'manifest.json';
 						contents = contents
 							.replace("__INJECT_SCRIPTS__",
-								injectIncludeManifestV3.map((s) => `"${s}"`).join(',\n\t\t\t'));
+								injectIncludeBrowserExt.map((s) => `"${s}"`).join(',\n\t\t\t'));
 						if (process.env.CHROME_EXTENSION_KEY && ['manifestv3'].includes(browser)) {
 							contents = contents.replace(/("name": "[^"]*")/, `$1,\n\t"key": "${process.env.CHROME_EXTENSION_KEY}"`);
 						}
 					}
 					else {
-						let backgroundScripts = backgroundIncludeBrowserExt;
-						let injectScripts = browser == "manifestv3"
-							? injectIncludeManifestV3
-							: injectIncludeFirefox;
+						let backgroundScripts = browser == "firefox"
+							? backgroundIncludeManifestV2
+							: backgroundIncludeManifestV3;
 						contents = contents
 							.replace("__BACKGROUND_SCRIPTS__",
 								backgroundScripts.map((s) => `"${s}"`).join(',\n\t\t\t'))
 							.replace("__INJECT_SCRIPTS__",
-								injectScripts.map((s) => `"${s}"`).join(',\n\t\t\t'))
+								injectIncludeBrowserExt.map((s) => `"${s}"`).join(',\n\t\t\t'))
 					}
 					
 					contents = contents.replace("__EXCLUDE_MATCHES__",
@@ -352,7 +340,8 @@ gulp.task('process-custom-scripts', function() {
 		'./src/common/preferences/preferences.html',
 		'./src/common/progressWindow/progressWindow.html',
 		'./src/common/modalPrompt/modalPrompt.html',
-		'./src/browserExt/offscreen/offscreenSandbox.html',
+		'./src/browserExt/translateHost/translateHost.html',
+		'./src/browserExt/offscreen/offscreen.html',
 		'./src/common/schema.js',
 		'./src/common/zotero.js',
 		'./src/common/zotero_config.js',

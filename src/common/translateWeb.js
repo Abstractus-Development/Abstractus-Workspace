@@ -1,16 +1,12 @@
 let TranslateWeb = {
-	async _initTranslate({ translate, doc, cookieSandbox, location, onSelect, onItemSaving, onDebug } = {}) {
-		if (!translate) {
-			translate = new Zotero.Translate.Web();
-			if (!doc) throw new Error(`TranslateWeb: No document provided for translation`);
-		}
+	async _initTranslate({ document, onSelect, onItemSaving, onDebug, onError } = {}) {
+		let translate = new Zotero.Translate.Web();
 		await Promise.all([
-			doc && translate.setDocument(doc),
-			cookieSandbox && translate.setCookieSandbox(cookieSandbox),
-			location && translate.setLocation(location, location),
+			document && translate.setDocument(document),
 			onSelect && translate.setHandler('select', onSelect),
 			onItemSaving && translate.setHandler('itemSaving', onItemSaving),
-			onDebug && translate.setHandler('debug', onDebug)
+			onDebug && translate.setHandler('debug', onDebug),
+			onError && translate.setHandler('error', onError)
 		]);
 
 		return translate;
@@ -20,21 +16,21 @@ let TranslateWeb = {
 		let translate = await this._initTranslate(options);
 		
 		if (options.translators) {
-			translate.setTranslator(options.translators);
+			await translate.setTranslator(options.translators);
 		}
 		return translate.getTranslators(true, !!options.translators);
 	},
 
 	async translate(options) {
 		let translate = await this._initTranslate(options);
-		let translators = options.translators;
+		let translators = options.translators?.slice();
 		if (!translators) {
 			translators = await translate.getTranslators(true);
 		}
 		
 		while (true) {
 			let translator = translators.shift();
-			translate.setTranslator(translator);
+			await translate.setTranslator(translator);
 			try {
 				let items = await translate.translate();
 				return {
@@ -53,11 +49,6 @@ let TranslateWeb = {
 			}
 		}
 	}
-}
-
-Zotero.Translate.ItemSaver.prototype.saveItems = async function (jsonItems) {
-	this.items = (this.items || []).concat(jsonItems);
-	return jsonItems
 }
 
 Zotero.TranslateWeb = TranslateWeb;

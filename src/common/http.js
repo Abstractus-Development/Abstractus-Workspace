@@ -54,6 +54,9 @@ Zotero.HTTP = new function() {
 
 		}
 		catch (e) {
+			if (e.credentialedRedirect) {
+				return Zotero.HTTP.request(method, url, Object.assign({}, originalOptions, { omitCredentials: true }));
+			}
 			if ((e.status === 429 || e.retryAfter) && options.backoff < options.maxBackoff) {
 				if (e.status === 429) {
 					Zotero.debug(`HTTP 429 returned, attempting a backoff #${options.backoff+1}`)
@@ -157,7 +160,7 @@ Zotero.HTTP = new function() {
 		}
 		Zotero.debug(`HTTP ${method} ${url}${logBody}`);
 		
-		var xmlhttp = useContentXHR ? new content.XMLHttpRequest() : new XMLHttpRequest();
+		var xmlhttp = useContentXHR ? new content.XMLHttpRequest() : new XMLHttpRequest(options.omitCredentials ? { mozAnon: true } : undefined);
 		xmlhttp.timeout = options.timeout;
 		var promise = Zotero.HTTP._attachHandlers(url, xmlhttp, options);
 		
@@ -180,6 +183,7 @@ Zotero.HTTP = new function() {
 			xmlhttp = await promise;
 			if (options.publisherOnly) {
 				Zotero.AbstractusNetwork.checkFinalURL(url, xmlhttp.responseURL);
+				Zotero.AbstractusNetwork.checkCredentialedRedirect(options, xmlhttp.responseURL);
 			}
 			if (options.debug && (xmlhttp.responseType === '' || xmlhttp.responseType === 'text')) {
 				Zotero.debug(`HTTP ${xmlhttp.status} ${xmlhttp.responseURL} response: ${xmlhttp.responseText}`);
@@ -273,7 +277,7 @@ Zotero.HTTP = new function() {
 				options.headers['Referer'] = options.referrer;
 			}
 
-			await this._augmentCfCookie(url, options);
+			if (!options.omitCredentials) await this._augmentCfCookie(url, options);
 			let replaceHeaders = HEADERS_SPECIAL_HANDLING.filter(header => !!options.headers[header])
 				.map(header => {
 					const val = { name: header, value: options.headers[header] }
@@ -288,7 +292,7 @@ Zotero.HTTP = new function() {
 					method,
 					headers: options.headers,
 					body: options.body,
-					credentials: Zotero.isInject ? 'same-origin' : 'include',
+					credentials: options.omitCredentials ? 'omit' : (Zotero.isInject ? 'same-origin' : 'include'),
 				}
 				if (abortController) {
 					fetchOptions.signal = abortController.signal;
@@ -325,6 +329,7 @@ Zotero.HTTP = new function() {
 			
 			if (options.publisherOnly) {
 				Zotero.AbstractusNetwork.checkFinalURL(url, response.url);
+				Zotero.AbstractusNetwork.checkCredentialedRedirect(options, response.url);
 			}
 
 			let responseData;

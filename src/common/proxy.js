@@ -687,7 +687,7 @@ Zotero.Proxy.OpenAthensProxy = class extends Zotero.Proxy {
 	constructor(json={}) {
 		super(json);
 		this.type = 'openathens';
-		this.toProxyRegexp = new RegExp(XRegExp.escape(this.toProxyScheme).replace('%u', '([^&]+)'));
+		this.toProxyRegexp = new RegExp(Zotero.Utilities.quotemeta(this.toProxyScheme).replace('%u', '([^&]+)'));
 	}
 
 	get domain() {

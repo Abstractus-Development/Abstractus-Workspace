@@ -54,6 +54,9 @@ Zotero.Repo = new function() {
 			return code;
 		}
 		
+		if (Zotero.TranslatorTrust.hasPinnedKeys()) {
+			throw new Error(`Translator ${translatorID} has no signed manifest`);
+		}
 		if (!debugMode) {
 			try {
 				await checkRepositoryAccess();

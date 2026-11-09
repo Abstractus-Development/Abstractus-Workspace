@@ -14,15 +14,21 @@ function serializeTranslator(translator, properties) {
 
 const requestOverride = {
 	handler: {
-        postReceive: async function(args) {
-            args[1]=Zotero.AbstractusNetwork.validate(args[1]);
-            args[2]=Zotero.AbstractusNetwork.translatorRequestOptions(args[1], args[2]);
-            return args;
-        },
+		postReceive: async function(args) {
+			args[1] = Zotero.AbstractusNetwork.validate(args[1]);
+			args[2] = Zotero.AbstractusNetwork.translatorRequestOptions(args[1], args[2]);
+			return args;
+		},
 		preSend: async function(xhr) {
+			let response = xhr.response;
+			if (response?.documentElement) {
+				response = response.contentType === 'text/html'
+					? response.documentElement.outerHTML
+					: new XMLSerializer().serializeToString(response);
+			}
 			return {
-				response: xhr.response,
-				responseText: xhr.response,
+				response,
+				responseText: response,
 				responseURL: xhr.responseURL,
 				responseType: xhr.responseType,
 				status: xhr.status,
@@ -57,16 +63,26 @@ const requestOverride = {
 	}
 }
 
-const OFFSCREEN_BACKGROUND_OVERRIDES = {
+const relayRequestOverride = {
+	handler: requestOverride.handler,
+	local: {
+		postReceive: async function(xhr) {
+			xhr.getAllResponseHeaders = () => xhr.responseHeaders;
+			return xhr;
+		}
+	}
+};
+
+const translatorFunctions = {
 	'Translators.get': {
 		handler: {
 			preSend: async function(translator) {
-				return serializeTranslator(translator, TRANSLATOR_PASSING_PROPERTIES);
+				return translator && serializeTranslator(translator, TRANSLATOR_PASSING_PROPERTIES);
 			}
 		},
 		local: {
 			postReceive: async function(translator) {
-				return new Zotero.Translator(translator);
+				return translator && new Zotero.Translator(translator);
 			}
 		}
 	},
@@ -104,16 +120,68 @@ const OFFSCREEN_BACKGROUND_OVERRIDES = {
 			}
 		},
 	},
-	'Messaging.sendMessage': {handler: {postReceive: args => Zotero.AbstractusNetwork.callback(args)}},
+};
+
+const ensureOffscreenBeforeSending = {
+	local: {
+		preSend: async function(args) {
+			await Zotero.OffscreenManager.ensureDocument();
+			return args;
+		}
+	}
+};
+
+const FRAME_MANAGER_MESSAGE_FUNCTIONS = {
+	'TranslateHostFrameManager.detect': ensureOffscreenBeforeSending,
+	'TranslateHostFrameManager.translate': ensureOffscreenBeforeSending,
+	'TranslateHostFrameManager.runNonWeb': ensureOffscreenBeforeSending,
+	'TranslateHostFrameManager.destroyFramesForTab': true,
+	'TranslateHostFrameManager.cleanup': true,
+};
+
+const FRAME_MANAGER_FUNCTIONS = {
+	...translatorFunctions,
 	'getVersion': true,
 	'getExtensionURL': true,
 	'Debug.log': true,
 	'debug': true,
 	'Errors.log': true,
-
+	'Messaging.sendMessage': { handler: { postReceive: args => Zotero.AbstractusNetwork.callback(args) } },
 	'Connector_Browser.isIncognito': true,
 	'Prefs.getAll': true,
-	'Prefs.getAsync': true,
-	'COHTTP.request': requestOverride,
-	'HTTP.request': requestOverride,
+	'COHTTP.request': relayRequestOverride,
+	'HTTP.request': relayRequestOverride,
 };
+
+const HOST_FUNCTIONS = {
+	detect: {
+		...translatorFunctions,
+		'Debug.log': true,
+		'debug': true,
+		'Errors.log': true,
+	},
+	translate: {
+		...translatorFunctions,
+		'Debug.log': true,
+		'debug': true,
+		'Errors.log': true,
+		'COHTTP.request': requestOverride,
+		'HTTP.request': requestOverride,
+	}
+};
+
+function translateHostFunctions(role, pageURL) {
+	if (role !== 'translate') return HOST_FUNCTIONS[role];
+	const scopedRequest = {
+		...requestOverride,
+		handler: {
+			...requestOverride.handler,
+			postReceive: async function(args) {
+				args = await requestOverride.handler.postReceive(args);
+				args[2] = Zotero.AbstractusNetwork.scopeCredentials(args[1], args[2], pageURL);
+				return args;
+			}
+		}
+	};
+	return { ...HOST_FUNCTIONS[role], 'COHTTP.request': scopedRequest, 'HTTP.request': scopedRequest };
+}

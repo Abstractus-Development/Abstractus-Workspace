@@ -55,8 +55,9 @@ var MESSAGES = {
 			}
 		}
 	},
-	OffscreenManager: {
-		sendMessage: true
+	TranslateHostFrameManager: {
+		detect: true,
+		translate: true
 	},
 	Debug: {
 		bgInit: false,

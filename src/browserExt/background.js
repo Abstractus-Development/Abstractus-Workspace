@@ -23,10 +23,10 @@ Zotero.Connector_Browser = new function() {
 	};
 	
 	this.init = async function() {
+		await Zotero.TranslateHostFrameManager.init();
 		if (Zotero.isManifestV3) {
 			if (Zotero.isChromium) {
 				buttonContext.push('action');
-				await Zotero.OffscreenManager.init();
 			}
 			this._tabInfo = _tabInfo = await Zotero.Utilities.Connector.createMV3PersistentObject('tabInfo', {ignoreKeys: ['selectCallback']});
 			setInterval(async () => {
@@ -191,7 +191,7 @@ Zotero.Connector_Browser = new function() {
 		if (!frame?.url || frame.url.split('#')[0] !== frameURL.split('#')[0]) return;
 		let tabInfo = this.getTabInfo(tabId);
 		if (tabInfo.translators && tabInfo.translators.length) return;
-		_tabInfo[tab.id] = Object.assign(_tabInfo[tab.id] || {}, {translators: [], isPDF: true, frameId});
+		_tabInfo[tab.id] = Object.assign(_tabInfo[tab.id] || {}, {translators: [], isPDF: true, frameId, frameURL});
 		try {
 			await Zotero.Connector_Browser.injectTranslationScripts(tab, frameId, frameURL);
 			await Zotero.Connector_Browser._updateExtensionUI(tab);
@@ -973,16 +973,16 @@ Zotero.Connector_Browser = new function() {
 	}
 
 	async function _browserAction(tab) {
-		if (tab && _isBlockedSite(tab.url)) {
-			await _showBlockedNotice(tab);
-			return;
-		}
 		if (Zotero.Retrieval && await Zotero.Retrieval.onToolbarClick(tab)) return;
         const connection = await Zotero.Connector.getConnectionState();
         if (connection.state === 'pairing_required') {
             await browser.windows.create({url:browser.runtime.getURL('preferences/connect.html'),type:'popup',width:480,height:560,focused:true});
             return;
         }
+		if (tab && _isBlockedSite(tab.url)) {
+			await _showBlockedNotice(tab);
+			return;
+		}
 		const shouldContinue = await Zotero.HostPermissions.checkChromiumActionPermissions(tab);
 		if (!shouldContinue) {
 			return;
